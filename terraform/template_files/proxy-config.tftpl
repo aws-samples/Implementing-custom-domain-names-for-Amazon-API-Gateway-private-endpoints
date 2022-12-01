@@ -1,0 +1,7 @@
+---
+  APIS:
+    %{~ for API in APIS ~}
+    - CUSTOM_DOMAIN_URL: ${API.CUSTOM_DOMAIN_URL}
+      %{ if can(API.ROUTE53_PUBLIC_DOMAIN) }ROUTE53_PUBLIC_DOMAIN: ${API.ROUTE53_PUBLIC_DOMAIN}%{ endif }
+      PRIVATE_API_URL: ${API.PRIVATE_API_URL}
+    %{~ endfor ~}

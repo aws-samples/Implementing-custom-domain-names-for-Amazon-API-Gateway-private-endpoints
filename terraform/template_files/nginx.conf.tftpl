@@ -1,0 +1,51 @@
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log debug;
+pid        /var/run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    server_names_hash_bucket_size 128;
+    resolver ${dns_server};
+    log_format  main  '$remote_addr - $remote_user - $server_name $host [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer"'
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    server {
+      listen 80 default_server;
+      location / {
+        return 200 '<html><body>Private API URL not implemented.</body></html>';
+        add_header Content-Type text/html;
+      }
+    }
+    
+    %{ for apiDomain, apiUrl in apis ~}
+    server {
+      listen 80;            
+      server_name ${apiDomain};
+      location / {
+          proxy_set_header X-Upstream-Domain  $server_name;
+          set $apiUrl ${apiUrl};
+          proxy_pass https://$apiUrl;
+      }
+    }
+    %{ endfor ~}
+
+}

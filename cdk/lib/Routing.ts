@@ -1,0 +1,227 @@
+import { CfnOutput, Stack, Token } from 'aws-cdk-lib';
+import * as aws_cert from 'aws-cdk-lib/aws-certificatemanager';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as alb from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import * as aws_route53 from 'aws-cdk-lib/aws-route53';
+import { LoadBalancerTarget } from 'aws-cdk-lib/aws-route53-targets';
+import { Construct } from 'constructs';
+import * as cdk from 'aws-cdk-lib'
+import extractDomain from 'extract-domain';
+
+import { proxyDomain, elbTypeEnum } from '../bin/Main';
+
+type RoutingProps = {
+    vpc: ec2.Vpc,
+    albSG?: ec2.SecurityGroup
+    elbType: elbTypeEnum | void,
+    proxyDomains: proxyDomain[]
+}
+export class RoutingConstruct extends Construct
+{
+    public readonly targetGroup: alb.ApplicationTargetGroup | alb.NetworkTargetGroup
+    public readonly elbDns: string
+
+    constructor ( scope: Construct, id: string, props: RoutingProps )
+    {
+        super( scope, id )
+        const stackName = Stack.of( this ).stackName
+
+        let domainsList: proxyDomain[] = props.proxyDomains
+
+        // Create Private Route 53 Zones
+        let uniqueDomains: proxyDomain[] = []
+        domainsList = domainsList.map( ( domain ) =>
+        {
+            const zone: aws_route53.IPrivateHostedZone = new aws_route53.PrivateHostedZone( this, `hosted-zone-${ domain.CUSTOM_DOMAIN_URL }`, {
+                vpc: props.vpc,
+                zoneName: domain.CUSTOM_DOMAIN_URL,
+            } )
+
+            return {
+                CUSTOM_DOMAIN_URL: domain.CUSTOM_DOMAIN_URL,
+                PRIVATE_API_URL: domain.PRIVATE_API_URL,
+                TLD: domain.TLD,
+                PRIVATE_ZONE_ID: zone.hostedZoneId,
+                ZONE: zone,
+                ROUTE53_PUBLIC_DOMAIN: domain.ROUTE53_PUBLIC_DOMAIN
+            };
+
+        } )
+
+
+        // find unique domainsList by TLD
+        const certDomains = [ ...new Set( domainsList.map( ( domain ) =>
+        {
+            return domain.ROUTE53_PUBLIC_DOMAIN || domain.TLD
+
+        } ) ) ]
+
+        // const groupByKey = ( list: any[], key: any, { omitKey = false }: any ) => list.reduce( ( hash: { [ x: string ]: any; }, { [ key ]: value, ...rest }: any ) => ( { ...hash, [ value ]: ( hash[ value ] || [] ).concat( omitKey ? { ...rest } : { [ key ]: value, ...rest } ) } ), {} )
+        // console.log( groupByKey( certDomains, 'ROUTE53_PUBLIC_DOMAIN', { omitKey: true } ) )
+        // const certDomainsGrouped = groupByKey( certDomains, 'ROUTE53_PUBLIC_DOMAIN', { omitKey: true } ) 
+
+        // console.log( `certDomains --> ${ certDomains }` );
+        // console.log( `extractDomain tld false --> ${ certDomains.map( ( domain ) => extractDomain( domain, { tld: false } ) ) }` );
+        // console.log( `extractDomain tld true --> ${ certDomains.map( ( domain ) => extractDomain( domain, { tld: true } ) ) }` );
+
+        // Create wild card certificates and add them to ELB listener
+        const certs: aws_cert.Certificate[] = certDomains.map( ( crt ) =>
+        {
+            // SSL certificate for the domain 
+            const cert = new aws_cert.Certificate(
+                this,
+                `${ stackName }-certificate-${ crt }`,
+                {
+                    domainName: `*.${ crt }`,
+                    validation: aws_cert.CertificateValidation.fromDns(
+                        aws_route53.PublicHostedZone.fromLookup(
+                            this,
+                            `public-hosted-zone-look-${ crt }`,
+                            { domainName: extractDomain( crt, { tld: false } ) } )
+                    ),
+                    // validation: aws_cert.CertificateValidation.fromEmail()                                       
+                }
+            )
+
+            return cert as aws_cert.Certificate
+        } )
+
+        
+
+
+
+        if ( props.elbType === elbTypeEnum.NLB )
+        {
+            // Network load balancer
+            const networkLoadBalancer = new alb.NetworkLoadBalancer(
+                this,
+                `${ stackName }-nlb`,
+                {
+                    vpc: props.vpc,
+                    vpcSubnets: {
+                        onePerAz: true,
+                        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
+                    },
+                    internetFacing: false,
+                    crossZoneEnabled: true,
+
+                }
+            );
+
+            const networkTargetGroupHttps = new alb.NetworkTargetGroup(
+                this,
+                `${ stackName }-nlb-target-group`,
+                {
+                    port: 80,
+                    vpc: props.vpc,
+                    protocol: alb.Protocol.TCP,
+                    targetType: alb.TargetType.IP,
+                    healthCheck: {
+                        interval: cdk.Duration.seconds( 10 )
+                    }
+                }
+            )
+            networkTargetGroupHttps.configureHealthCheck( {
+                path: "/",
+                protocol: alb.Protocol.HTTP,
+            } );
+            const nlbListener = networkLoadBalancer.addListener( `${ stackName }-nlb-listener`, {
+                protocol: alb.Protocol.TLS,
+                port: 443,
+                certificates: [ ...certs ]
+            } );
+
+            nlbListener.addTargetGroups( `${ stackName }-nlb-listener-target-group`, networkTargetGroupHttps );
+
+            domainsList.forEach( ( record ) =>
+            {
+                // previously created route 53 hosted zone 
+                const zone = record.ZONE
+
+                new aws_route53.ARecord( this, `${ stackName }-a-record-nlb-${ record.CUSTOM_DOMAIN_URL }`, {
+                    zone: record.ZONE,
+                    target: aws_route53.RecordTarget.fromAlias( new LoadBalancerTarget( networkLoadBalancer ) ),
+                    recordName: record.CUSTOM_DOMAIN_URL,
+                    deleteExisting: true
+                } )
+
+            } )
+
+            this.targetGroup = networkTargetGroupHttps
+            this.elbDns = `dualstack.${ networkLoadBalancer.loadBalancerDnsName }`
+        }
+        else
+        {
+            // Application load balancer
+            const loadBalancer = new alb.ApplicationLoadBalancer(
+                this,
+                `${ stackName }-alb`,
+                {
+                    vpc: props.vpc,
+                    vpcSubnets: {
+                        onePerAz: true,
+                        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
+                    },
+                    securityGroup: props.albSG,
+                    internetFacing: false,
+                }
+            );
+
+            // Target group to make resources containers discoverable by the application load balancer
+            const targetGroupHttps = new alb.ApplicationTargetGroup(
+                this,
+                `${ stackName }-alb-target-group`,
+                {
+                    port: 80,
+                    vpc: props.vpc,
+                    protocol: alb.ApplicationProtocol.HTTP,
+                    targetType: alb.TargetType.IP,
+                }
+            )
+
+            // Health check for containers to check they were deployed correctly
+            targetGroupHttps.configureHealthCheck( {
+                path: "/",
+                protocol: alb.Protocol.HTTP,
+                interval: cdk.Duration.seconds( 5 ),
+                timeout: cdk.Duration.seconds( 2 ),
+            } );
+
+            // only allow HTTPS connections 
+            const listener = loadBalancer.addListener( `${ stackName }-alb-listener`, {
+                open: false,
+                port: 443,
+                certificates: [ ...certs ]
+            } );
+
+            listener.addTargetGroups( `${ stackName }-alb-listener-target-group`, {
+                targetGroups: [ targetGroupHttps ],
+            } );
+
+
+            domainsList.forEach( ( record ) =>
+            {
+                // previously created route 53 hosted zone 
+                const zone = record.ZONE
+
+                new aws_route53.ARecord( this, `${ stackName }-a-record-alb-${ record.CUSTOM_DOMAIN_URL }`, {
+                    zone: record.ZONE,
+                    target: aws_route53.RecordTarget.fromAlias( new LoadBalancerTarget( loadBalancer ) ),
+                    comment: `Alias to ALB`,
+                    recordName: record.CUSTOM_DOMAIN_URL,
+                    deleteExisting: true
+                } )
+
+            } )
+
+            this.targetGroup = targetGroupHttps
+            this.elbDns = `dualstack.${ loadBalancer.loadBalancerDnsName }`
+
+        }
+
+    }
+
+}
+
+
+

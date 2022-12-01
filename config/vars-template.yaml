@@ -1,0 +1,16 @@
+---
+VARIABLES:
+  - CREATE_VPC: true
+    APP_ENVIRONMENT: my_environment
+    APP_NAME: my_app
+    ELB_TYPE: NLB
+    VPC_CIDR: 10.0.0.0/16
+    PUBLIC_SUBNETS: true
+    EXTERNAL_VPC_ID: ''
+    EXTERNAL_PRIVATE_SUBNETS_ID: []
+    EXTERNAL_ALB_SG_ID: ''
+    EXTERNAL_FARGATE_SG_ID: ''
+    EXTERNAL_VPC_ENDPOINT_ID: ''
+    TASK_IMAGE: public.ecr.aws/nginx/nginx
+    TASK_IMAGE_TAG: 1.23-alpine-perl
+    PROXY_CONFIG_PATH: ./config/proxy-config.yaml
