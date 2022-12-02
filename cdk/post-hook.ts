@@ -1,7 +1,7 @@
 import * as url from 'url'
 import * as path from 'path'
 import stringHash = require( 'string-hash' )
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import * as yaml from 'js-yaml';
 import { parse } from 'ts-command-line-args'
 import { proxyDomain } from './bin/Main';
@@ -103,12 +103,18 @@ const GenerateOutputsFile = ( props: IArguments, proxyDomains: proxyDomain[] ): 
   outputObj.APIS = arrApis
   outputObj.API_RESOURCE_POLICY_MAPPING = arrPolicyMappings
 
-
-  //   console.log( `${ JSON.stringify( outputObj, null, 2 ) }` );
-
+  // console.log(`path.parse(props.destinationPath).dir-->${path.parse(props.destinationPath).dir}`);
+  mkdirSync(path.parse(props.destinationPath).dir  , { recursive: true} );
   writeFileSync( props.destinationPath, JSON.stringify( outputObj, null, 2 ) )
 
-  console.log( `outputs.json file saved at location ${ path.join( props.destinationPath ) }` );
+  console.log( `
+  ########################## Deployment Complete ###################################
+
+  ------> outputs.json file saved at location ${ path.join( props.destinationPath ) }
+
+  ##################################################################################
+  
+  ` );
 
 }
 

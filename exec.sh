@@ -244,13 +244,16 @@ if [ "${execution_tool}" == "cdk" ]; then
                 npx npm install
                 # Check for bootstrap
                 if ! aws cloudformation describe-stacks --stack-name CDKToolkit > /dev/null 2>&1 ; then
-                    echo "CDK requires bootstrapping, please wait."
-                    
+                    echo "CDK requires bootstrapping, please wait."                    
                     npx --yes cdk bootstrap --profile "${AWS_PROFILE}" aws://"${CDK_DEPLOY_ACCOUNT}"/"${CDK_DEPLOY_REGION}"
-                fi                
-
-                npx --yes cdk --profile "${AWS_PROFILE}" "${action}" ${cdk_args:-} ${downstream_args:-}
-                # npx --yes cdk --profile "${AWS_PROFILE}" "${action}"  > synth_output.yaml
+                fi
+                PROXY_DOMAINS_JSON=''
+                if [ "${action}" == "synth" ]|| [ "${action}" == "deploy" ]; then                    
+                    PROXY_DOMAINS_JSON=$(ts-node pre-hook.ts --proxyFilePath="${PROXY_CONFIG_PATH}" | jq -c .)
+                fi
+                # echo "${PROXY_DOMAINS_JSON}"
+                PROXY_DOMAINS="${PROXY_DOMAINS_JSON}" npx --yes cdk --profile "${AWS_PROFILE}" "${action}" ${cdk_args:-} ${downstream_args:-}
+                # PROXY_DOMAINS="${PROXY_DOMAINS_JSON}" npx --yes cdk --profile "${AWS_PROFILE}" "${action}"  > synth_output.yaml
 
                 success=$?
                 if [ $success != 0 ]; then
@@ -259,7 +262,7 @@ if [ "${execution_tool}" == "cdk" ]; then
                     if [ "${action}" == "deploy" ]; then
                         STACK_OUTPUTS=$(aws cloudformation describe-stacks --stack-name "${APP_NAME}-${APP_ENVIRONMENT}" --query "Stacks[0].Outputs" --output json | jq -c .)
                         # echo STACK_OUTPUTS="${STACK_OUTPUTS}"                   
-                        ts-node generate_output.ts --region "${CDK_DEPLOY_REGION}" \
+                        ts-node post-hook.ts --region "${CDK_DEPLOY_REGION}" \
                         --proxyFilePath="${PROXY_CONFIG_PATH:=../config/proxy-config.yaml}" \
                         --destinationPath="../outputs/cdk/outputs.json" \
                         --stackOutputs="${STACK_OUTPUTS}"
