@@ -28,8 +28,7 @@ export class RoutingConstruct extends Construct
 
         let domainsList: proxyDomain[] = props.proxyDomains
 
-        // Create Private Route 53 Zones
-        let uniqueDomains: proxyDomain[] = []
+        // Create Private Route 53 Zones        
         domainsList = domainsList.map( ( domain ) =>
         {
             const zone: aws_route53.IPrivateHostedZone = new aws_route53.PrivateHostedZone( this, `hosted-zone-${ domain.CUSTOM_DOMAIN_URL }`, {
@@ -38,55 +37,61 @@ export class RoutingConstruct extends Construct
             } )
 
             return {
-                CUSTOM_DOMAIN_URL: domain.CUSTOM_DOMAIN_URL,
-                PRIVATE_API_URL: domain.PRIVATE_API_URL,
-                TLD: domain.TLD,
+                ...domain,
                 PRIVATE_ZONE_ID: zone.hostedZoneId,
-                ZONE: zone,
-                ROUTE53_PUBLIC_DOMAIN: domain.ROUTE53_PUBLIC_DOMAIN
+                PRIVATE_ZONE: zone,
+                //TODO -  use wild card or fqdn domain for cert
+                CERT_DOMAIN: `${ domain.CUSTOM_DOMAIN_URL.substring( domain.CUSTOM_DOMAIN_URL.indexOf( "." ) + 1 ) }`
             };
 
         } )
 
+        const uniqueCertWithPublicZones: {
+            KEY: string,
+            CERT_DOMAIN: string,
+            PUBLIC_ZONE_ID: string
+        }[] = []
 
-        // find unique domainsList by TLD
-        const certDomains = [ ...new Set( domainsList.map( ( domain ) =>
+        domainsList.forEach( element =>
         {
-            return domain.ROUTE53_PUBLIC_DOMAIN || domain.TLD
+            const isDuplicate = uniqueCertWithPublicZones.filter( predicate => predicate.KEY === `${ element.CERT_DOMAIN }_${ element.PUBLIC_ZONE_ID }` )
+            // console.log( `isDuplicate --> ${ isDuplicate } ` );
+            if ( isDuplicate.length === 0 )
+            {
+                uniqueCertWithPublicZones.push( {
+                    KEY: `${ element.CERT_DOMAIN }_${ element.PUBLIC_ZONE_ID }`,
+                    CERT_DOMAIN: element.CERT_DOMAIN!,
+                    PUBLIC_ZONE_ID: element.PUBLIC_ZONE_ID!,
+                } );
+            }
+        } );
 
-        } ) ) ]
 
-        // const groupByKey = ( list: any[], key: any, { omitKey = false }: any ) => list.reduce( ( hash: { [ x: string ]: any; }, { [ key ]: value, ...rest }: any ) => ( { ...hash, [ value ]: ( hash[ value ] || [] ).concat( omitKey ? { ...rest } : { [ key ]: value, ...rest } ) } ), {} )
-        // console.log( groupByKey( certDomains, 'ROUTE53_PUBLIC_DOMAIN', { omitKey: true } ) )
-        // const certDomainsGrouped = groupByKey( certDomains, 'ROUTE53_PUBLIC_DOMAIN', { omitKey: true } ) 
-
-        // console.log( `certDomains --> ${ certDomains }` );
-        // console.log( `extractDomain tld false --> ${ certDomains.map( ( domain ) => extractDomain( domain, { tld: false } ) ) }` );
-        // console.log( `extractDomain tld true --> ${ certDomains.map( ( domain ) => extractDomain( domain, { tld: true } ) ) }` );
+        // console.log( `uniqueCertWithPublicZones -->  ${ JSON.stringify( uniqueCertWithPublicZones ) }` )
 
         // Create wild card certificates and add them to ELB listener
-        const certs: aws_cert.Certificate[] = certDomains.map( ( crt ) =>
+        const certs: aws_cert.Certificate[] = uniqueCertWithPublicZones.map( ( crt ) =>
         {
             // SSL certificate for the domain 
             const cert = new aws_cert.Certificate(
                 this,
-                `${ stackName }-certificate-${ crt }`,
+                `${ stackName }-certificate-${ crt.CERT_DOMAIN}`,
                 {
-                    domainName: `*.${ crt }`,
+                    domainName: `*.${ crt.CERT_DOMAIN }`, //TODO -  use wild card or fqdn domain for cert
                     validation: aws_cert.CertificateValidation.fromDns(
-                        aws_route53.PublicHostedZone.fromLookup(
+                        aws_route53.PublicHostedZone.fromHostedZoneId(
                             this,
-                            `public-hosted-zone-look-${ crt }`,
-                            { domainName: extractDomain( crt, { tld: false } ) } )
+                            `public-hosted-zone-look-${ crt.CERT_DOMAIN }`,
+                            `${ crt.PUBLIC_ZONE_ID }`
+                        )
                     ),
-                    // validation: aws_cert.CertificateValidation.fromEmail()                                       
                 }
-            )
+            );
 
             return cert as aws_cert.Certificate
         } )
 
-        
+
 
 
 
@@ -136,10 +141,10 @@ export class RoutingConstruct extends Construct
             domainsList.forEach( ( record ) =>
             {
                 // previously created route 53 hosted zone 
-                const zone = record.ZONE
+                // const zone = record.PRIVATE_ZONE
 
                 new aws_route53.ARecord( this, `${ stackName }-a-record-nlb-${ record.CUSTOM_DOMAIN_URL }`, {
-                    zone: record.ZONE,
+                    zone: record.PRIVATE_ZONE,
                     target: aws_route53.RecordTarget.fromAlias( new LoadBalancerTarget( networkLoadBalancer ) ),
                     recordName: record.CUSTOM_DOMAIN_URL,
                     deleteExisting: true
@@ -202,10 +207,10 @@ export class RoutingConstruct extends Construct
             domainsList.forEach( ( record ) =>
             {
                 // previously created route 53 hosted zone 
-                const zone = record.ZONE
+                // const zone = record.PRIVATE_ZONE
 
                 new aws_route53.ARecord( this, `${ stackName }-a-record-alb-${ record.CUSTOM_DOMAIN_URL }`, {
-                    zone: record.ZONE,
+                    zone: record.PRIVATE_ZONE,
                     target: aws_route53.RecordTarget.fromAlias( new LoadBalancerTarget( loadBalancer ) ),
                     comment: `Alias to ALB`,
                     recordName: record.CUSTOM_DOMAIN_URL,

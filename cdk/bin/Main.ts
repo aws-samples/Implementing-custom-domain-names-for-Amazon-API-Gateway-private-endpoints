@@ -10,38 +10,42 @@ import path from 'path';
 import { ProxyServiceStack } from '../lib/ProxyServiceStack';
 
 export type proxyDomain = {
-  TLD: string,
+  // TLD: string,
   CUSTOM_DOMAIN_URL: string,
   PRIVATE_API_URL: string,
   PRIVATE_ZONE_ID?: string,
-  ZONE?: any
+  PRIVATE_ZONE?: any
   ROUTE53_PUBLIC_DOMAIN?: string,
-  VERBS?:string[]
+  VERBS?: string[],
+  PUBLIC_ZONE_ID?: string,
+  CERT_DOMAIN?:string
 }
 export enum elbTypeEnum
 {
-  ALB='ALB',
-  NLB ='NLB'
+  ALB = 'ALB',
+  NLB = 'NLB'
 }
 const environment: string = process.env.APP_ENVIRONMENT || 'dev'
 const appName: string = process.env.APP_NAME || 'ReverseProxy'
-const configPath: string = process.env.PROXY_CONFIG_PATH || '../config/proxy-config.yaml'
-const elbType: elbTypeEnum = (process.env.ELB_TYPE || 'NLB') as elbTypeEnum
+// const proxyDomains_str: string =  process.env.PROXY_DOMAINS!
+const proxyDomains: proxyDomain[] = JSON.parse( process.env.PROXY_DOMAINS! ) as proxyDomain[]
+const elbType: elbTypeEnum = ( process.env.ELB_TYPE || 'NLB' ) as elbTypeEnum
 const createVpc: string = process.env.CREATE_VPC || 'true'
 const vpcCidr: string = process.env.VPC_CIDR || '10.0.64.0/20'
 const externalVpcId: string = process.env.EXTERNAL_VPC_ID || ''
 const externalPrivateSubnetIds: string = process.env.EXTERNAL_PRIVATE_SUBNETS_ID || ''
 const externalAlbSgId: string = process.env.EXTERNAL_ALB_SG_ID || ''
 const externalFargateSgId: string = process.env.EXTERNAL_FARGATE_SG_ID || ''
-const taskImage: string = (process.env.TASK_IMAGE || 'public.ecr.aws/nginx/nginx') + ":" + (process.env.TASK_IMAGE_TAG || '1.23-alpine-perl')
-const hasPublicSubnets: string =  process.env.PUBLIC_SUBNETS || 'false' 
+const taskImage: string = ( process.env.TASK_IMAGE || 'public.ecr.aws/nginx/nginx' ) + ":" + ( process.env.TASK_IMAGE_TAG || '1.23-alpine-perl' )
+const hasPublicSubnets: string = process.env.PUBLIC_SUBNETS || 'false'
 
 
 
 const Main = () =>
 {
+  
   const app = new cdk.App();
-  const proxyDomains: proxyDomain[] = GetDomains( path.join(configPath ) )
+  console.table(proxyDomains)
   const mainStack = new ProxyServiceStack( app, `${ appName }-${ environment }`, {
     env: {
       account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -64,11 +68,6 @@ const Main = () =>
   cdk.Tags.of( mainStack ).add( 'App', appName );
   cdk.Tags.of( mainStack ).add( 'Environment', environment );
 
-  // GenerateOutputsFile( {
-  //   destinationPath: '../../outputs/cdk/outputs.json',
-  //   apiGatewayVPCInterfaceEndpoint: mainStack.apiGatewayVPCInterfaceEndpoint,
-  //   proxyDomains: proxyDomains
-  // } )
 }
 
 const GetDomains = ( sourceYamlPath: string ): proxyDomain[] =>
@@ -80,9 +79,9 @@ const GetDomains = ( sourceYamlPath: string ): proxyDomain[] =>
     checkApiGatewayURLPattern( record.PRIVATE_API_URL )
     return {
       ...record,
-      CUSTOM_DOMAIN_URL: record.CUSTOM_DOMAIN_URL.replace('https://',''),
+      CUSTOM_DOMAIN_URL: record.CUSTOM_DOMAIN_URL.replace( 'https://', '' ),
       //ROUTE53_PUBLIC_DOMAIN provided by application then use that as a top level domain
-      TLD: record.ROUTE53_PUBLIC_DOMAIN ? extractDomain(record.ROUTE53_PUBLIC_DOMAIN, { tld: false }) : extractDomain( record.CUSTOM_DOMAIN_URL, { tld: false } )
+      TLD: record.ROUTE53_PUBLIC_DOMAIN ? extractDomain( record.ROUTE53_PUBLIC_DOMAIN, { tld: false } ) : extractDomain( record.CUSTOM_DOMAIN_URL, { tld: false } )
     }
 
   } )
@@ -161,7 +160,7 @@ http {
       location / {
           proxy_set_header X-Upstream-Domain  $server_name;
           proxy_set_header Referer  $server_name;
-          set $apiUrl ${record.PRIVATE_API_URL};
+          set $apiUrl ${ record.PRIVATE_API_URL };
           proxy_pass ${ record.PRIVATE_API_URL };
       }
     }
