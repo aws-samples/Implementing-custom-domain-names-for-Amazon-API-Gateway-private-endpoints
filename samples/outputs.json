@@ -1,0 +1,111 @@
+{
+  "STACK_OUTPUTS": [
+    {
+      "OutputKey": "apigatewayvpceid",
+      "OutputValue": "vpce-1a1a1a1a1a1a1a1a1"
+    },
+    {
+      "OutputKey": "vpcid",
+      "OutputValue": "vpc-2b2b2b2b2b2b2b2b2"
+    },
+    {
+      "OutputKey": "elbdns",
+      "OutputValue": "dualstack.stack-11111111111A-6d91fd449d8d8ce4.elb.region.amazonaws.com"
+    }
+  ],
+  "API_RESOURCE_POLICY_MAPPING": {
+    "api-id1": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "reverse-proxy-deny",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "execute-api:Invoke",
+          "Resource": [
+            "execute-api:/*/*/*"
+          ],
+          "Condition": {
+            "StringNotEquals": {
+              "aws:SourceVpce": "vpce-1a1a1a1a1a1a1a1a1"
+            }
+          }
+        },
+        {
+          "Sid": "reverse-proxy-allow-873532159",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "execute-api:Invoke",
+          "Resource": "*",
+          "Condition": {
+            "StringEquals": {
+              "aws:Referer": "api1.private.example.com"
+            }
+          }
+        },
+        {
+          "Sid": "reverse-proxy-allow-873532159",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "execute-api:Invoke",
+          "Resource": [
+            "execute-api:/dev/*/*"
+          ],
+          "Condition": {
+            "StringEquals": {
+              "aws:Referer": "api2.private.example.com"
+            }
+          }
+        },
+        {
+          "Sid": "reverse-proxy-allow-2156649116",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "execute-api:Invoke",
+          "Resource": [
+            "execute-api:/dev/GET/path1/path2/path3",
+            "execute-api:/dev/POST/path1/path2/path3"
+          ],
+          "Condition": {
+            "StringEquals": {
+              "aws:Referer": "api1.internal.private.example.com"
+            }
+          }
+        }
+      ]
+    },
+    "api-id2": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "reverse-proxy-deny",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "execute-api:Invoke",
+          "Resource": [
+            "execute-api:/*/*/*"
+          ],
+          "Condition": {
+            "StringNotEquals": {
+              "aws:SourceVpce": "vpce-1a1a1a1a1a1a1a1a1"
+            }
+          }
+        },
+        {
+          "Sid": "reverse-proxy-allow-1141299196",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "execute-api:Invoke",
+          "Resource": [
+            "execute-api:/dev/*/*"
+          ],
+          "Condition": {
+            "StringEquals": {
+              "aws:Referer": "api2.private.example.com"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -3,27 +3,40 @@ locals {
     "ecr.dkr",
     "ecr.api",
     "execute-api",
-    "s3",
-    "logs"
+    "logs",
+    "s3"
   ]
+  endpoint_ids = {
+    "ecr.dkr"     = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
+    "ecr.api"     = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
+    "execute-api" = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
+    "logs"        = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
+    "s3"          = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
+  }
 }
 
-data "aws_vpc_endpoint_service" "selected" {
-  for_each = { for service in local.endpoints : service => service }
+data "external" "existing_endpoint" {
+  for_each = { for endpoint in local.endpoints : endpoint => {
+    endpoint = endpoint
+    vpc_id   = local.vpc_id
+    }
+  }
 
-  service_name = "com.amazonaws.${data.aws_region.current.name}.${each.value}"
-  service_type = "Interface"
+  program = ["/bin/bash", "${path.module}/scripts/existing_endpoint.sh", each.value.endpoint, each.value.vpc_id]
 
 }
 
-resource "aws_vpc_endpoint" "this" {
-  for_each = { for service in local.endpoints : service => service }
+module "endpoints" {
+  source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
+  version = "~>3.18.1"
 
-  vpc_id              = local.vpc_id
-  service_name        = data.aws_vpc_endpoint_service.selected[each.value].service_name
-  vpc_endpoint_type   = each.value == "s3" ? "Gateway" : "Interface"
-  security_group_ids  = each.value == "s3" ? null : [aws_security_group.vpc_endpoints.id]
-  subnet_ids          = each.value == "s3" ? null : local.private_subnets
-  route_table_ids     = each.value == "s3" ? data.aws_route_tables.selected.ids : null
-  private_dns_enabled = each.value == "s3" ? false : true
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  vpc_id             = local.vpc_id
+  endpoints = { for endpoint in local.endpoints : endpoint => {
+
+    create  = lookup(local.endpoint_ids, endpoint, false)
+    service = endpoint
+
+    }
+  }
 }

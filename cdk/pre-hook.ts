@@ -9,8 +9,7 @@ import { parse } from 'ts-command-line-args'
 type IArguments = {
     proxyFilePath: string
 }
-
-export const Run = async () =>
+const Run = async () =>
 {
     const args = parse<IArguments>(
         {
@@ -22,7 +21,7 @@ export const Run = async () =>
     const publicZonesTotal: route53_sdk.HostedZone[] = await GetPublicZones()
     const domainsList = proxyDomains?.map( ( record ) =>
     {
-        checkApiGatewayURLPattern( record.PRIVATE_API_URL )
+        checkApiGatewayURLPattern( record.PRIVATE_API_URL, record.CUSTOM_DOMAIN_URL )
         return {
             ...record,
             PUBLIC_ZONE_ID: GetZoneID( record.CUSTOM_DOMAIN_URL, publicZonesTotal )
@@ -37,10 +36,55 @@ export const Run = async () =>
     process.stdout.write( JSON.stringify( domainsList ) )
 
 }
+const GetZoneID = function ( customDomain: string, publicZones: route53_sdk.HostedZone[] ): string
+{
+    let zoneId
+    const extractDm = extractDomain( customDomain, { tld: false } );
+    // console.log( `extractDm--> ${ extractDm }` )
+    let probableBaseDomain = ( customDomain === extractDm ? customDomain : customDomain.substring( customDomain.indexOf( "." ) + 1 ) )
+    const tld = customDomain.substring( customDomain.lastIndexOf( "." ) + 1 )
+    while ( probableBaseDomain !== tld )
+    {   // check domain exist            
+        const zone = publicZones.find(
+            ( zone ) => zone.Name === ( probableBaseDomain + "." )
+        )
+        // if exist then exit while
+        if ( zone )
+        {
+            zoneId = zone?.Id?.substring( zone?.Id?.lastIndexOf( "/" ) + 1 )
+            break;
+        }
+        else
+        {
+            // console.log( `Public hosted zone ${ probableBaseDomain } not found.` )
+            // else traverse to the next dot.
+            probableBaseDomain = probableBaseDomain.substring( probableBaseDomain.indexOf( "." ) + 1 )
+        }
 
+    }
+    // zone id is empty throw error
+    if ( !zoneId )
+    {
+        throw `Route53 public hosted zone for CUSTOM_DOMAIN_URL=${ customDomain } was not found in your AWS account!`
+    }
+    return zoneId
+}
+
+function checkApiGatewayURLPattern ( url: string, customDomain: string )
+{
+
+    const pattern = /https:\/\/[a-z0-9]*.execute-api.(us(-gov)?|ap|ca|cn|eu|sa)-(central|(north|south)?(east|west)?)-\d.amazonaws.com\/[a-z0-9]/ig
+    const reg = new RegExp( pattern )
+    if ( !reg.test( url ) )
+    {
+        const msg = `Supported pattern for PRIVATE_API_URL in proxy configuration file is https://<api-id>.execute-api.<region>.amazonaws.com/stage/ found value PRIVATE_API_URL=${ url }`
+        // console.log(`${msg}`);
+        throw new Error( msg )
+    }
+}
 
 export const GetPublicZones = async (): Promise<route53_sdk.HostedZone[]> =>
-{    
+{
     const paginator = route53_sdk.paginateListHostedZones( {
         client: new route53_sdk.Route53Client( {} ),
         pageSize: 100
@@ -54,82 +98,18 @@ export const GetPublicZones = async (): Promise<route53_sdk.HostedZone[]> =>
         {
             return ( zone?.Config?.PrivateZone === false )
         } )
-        
-        publicZonesTotal.push( ...publicZones );            
-    }   
-    
-    // const client = new route53_sdk.Route53Client( {} );
-    // const data = await client.send( new route53_sdk.ListHostedZonesCommand( {} ) );
-    // const zones = data.HostedZones || [];
-    // const publicZones = zones.filter( ( zone ) =>
-    // {
-    //     return ( zone?.Config?.PrivateZone === false )
-    // } )
-    // console.log( `ZONES found ----------> ${ JSON.stringify( publicZones ) }` );
 
+        publicZonesTotal.push( ...publicZones );
+    }
     return publicZonesTotal
 }
 
-const GetZoneID = function ( customDomain: string, publicZones: route53_sdk.HostedZone[] ): string
+( async function ()
 {
-    let zoneId
-    // if ( route53PublicDomain )
-    // {
-    //     const zone = publicZones.find(
-    //         ( zone ) => zone.Name === ( route53PublicDomain + "." )
-    //     )
-    //     zoneId = zone?.Id?.substring( zone?.Id?.lastIndexOf( "/" ) + 1 )
-    // } else
-    // {
-        const extractDm = extractDomain( customDomain, { tld: false } );
-        // console.log( `extractDm--> ${ extractDm }` )
-        let probableBaseDomain = ( customDomain === extractDm ? customDomain : customDomain.substring( customDomain.indexOf( "." ) + 1 ) )
-        const tld = customDomain.substring( customDomain.lastIndexOf( "." ) + 1 )
-
-        while ( probableBaseDomain !== tld )
-        {   // check domain exist            
-            const zone = publicZones.find(
-                ( zone ) => zone.Name === ( probableBaseDomain + "." )
-            )
-            // if exist then exit while
-            if ( zone )
-            {
-                // console.log( `${ probableBaseDomain } exist, getting zone Id` )
-                zoneId = zone?.Id?.substring( zone.Id.lastIndexOf( "/" ) + 1 )
-                break;
-            }
-            else
-            {
-                // console.log( `Public hosted zone ${ probableBaseDomain } not found.` )
-                // else traverse to the next dot.
-                probableBaseDomain = probableBaseDomain.substring( probableBaseDomain.indexOf( "." ) + 1 )
-            }
-
-        }
-    // }
-
-
-    // zone id is empty throw error
-    if ( !zoneId )
-    {
-        throw `Public hosted zone for ${ customDomain } was not found!!!`
-    }
-
-    return zoneId
-}
-
-function checkApiGatewayURLPattern ( url: string )
+    await Run()
+} )().catch( e =>
 {
+    console.error( e )
+    process.exit( 1 )
+} )
 
-    const pattern = /https:\/\/[a-z0-9]*.execute-api.(us(-gov)?|ap|ca|cn|eu|sa)-(central|(north|south)?(east|west)?)-\d.amazonaws.com\/[a-z0-9]/ig
-    const reg = new RegExp( pattern )
-    if ( !reg.test( url ) )
-    {
-        const msg = `privateApiProxy in file proxy-config.yaml with value ${ url } does not follow a pattern https://<api-id>.execute-api.<region>.amazonaws.com/stage/`
-        // console.log(`${msg}`);
-        throw new Error( msg )
-    }
-}
-
-
-Run()

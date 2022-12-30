@@ -192,26 +192,7 @@ export class NetworkingConstruct extends Construct
         const s3Gateway = new ec2.GatewayVpcEndpoint( this, `${ stackName }-s3-gateway-endpoint`, {
             vpc: vpc,
             service: ec2.GatewayVpcEndpointAwsService.S3,// new ec2.GatewayVpcEndpointAwsService(`com.amazonaws.${ Stack.of( this ).region }.s3`),                        
-        } );
-
-        // // endpoints for ecs exec
-        // new ec2.InterfaceVpcEndpoint( this, `${ stackName }-ssm-interface-endpoint`, {
-        //     vpc: vpc,
-        //     service: ec2.InterfaceVpcEndpointAwsService.SSM,            
-        //     securityGroups: [ defaultSG ]
-        // } );
-
-        // new ec2.InterfaceVpcEndpoint( this, `${ stackName }-ssm-messages-interface-endpoint`, {
-        //     vpc: vpc,
-        //     service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,            
-        //     securityGroups: [ defaultSG ]
-        // } );
-
-        // new ec2.InterfaceVpcEndpoint( this, `${ stackName }-ec2-messages-interface-endpoint`, {
-        //     vpc: vpc,
-        //     service: ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,            
-        //     securityGroups: [ defaultSG ]
-        // } );
+        } );        
 
         this.vpc = vpc
 

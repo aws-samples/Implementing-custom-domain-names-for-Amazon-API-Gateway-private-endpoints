@@ -35,13 +35,14 @@ http {
         add_header Content-Type text/html;
       }
     }
-    
+
     %{ for apiDomain, apiUrl in apis ~}
     server {
-      listen 80;            
+      listen 80;
       server_name ${apiDomain};
       location / {
           proxy_set_header X-Upstream-Domain  $server_name;
+          proxy_set_header Referer $server_name
           set $apiUrl ${apiUrl};
           proxy_pass https://$apiUrl;
       }

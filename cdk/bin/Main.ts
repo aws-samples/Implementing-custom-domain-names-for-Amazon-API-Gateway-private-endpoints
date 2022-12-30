@@ -1,12 +1,6 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
-
 import * as cdk from 'aws-cdk-lib';
-import extractDomain from 'extract-domain';
-import { readFileSync, writeFileSync } from 'fs';
-import * as yaml from 'js-yaml';
-import path from 'path';
-
 import { ProxyServiceStack } from '../lib/ProxyServiceStack';
 
 export type proxyDomain = {
@@ -18,7 +12,7 @@ export type proxyDomain = {
   ROUTE53_PUBLIC_DOMAIN?: string,
   VERBS?: string[],
   PUBLIC_ZONE_ID?: string,
-  CERT_DOMAIN?:string
+  CERT_DOMAIN?:string,
 }
 export enum elbTypeEnum
 {
@@ -27,7 +21,6 @@ export enum elbTypeEnum
 }
 const environment: string = process.env.APP_ENVIRONMENT || 'dev'
 const appName: string = process.env.APP_NAME || 'ReverseProxy'
-// const proxyDomains_str: string =  process.env.PROXY_DOMAINS!
 const proxyDomains: proxyDomain[] = JSON.parse( process.env.PROXY_DOMAINS! ) as proxyDomain[]
 const elbType: elbTypeEnum = ( process.env.ELB_TYPE || 'NLB' ) as elbTypeEnum
 const createVpc: string = process.env.CREATE_VPC || 'true'
@@ -38,6 +31,7 @@ const externalAlbSgId: string = process.env.EXTERNAL_ALB_SG_ID || ''
 const externalFargateSgId: string = process.env.EXTERNAL_FARGATE_SG_ID || ''
 const taskImage: string = ( process.env.TASK_IMAGE || 'public.ecr.aws/nginx/nginx' ) + ":" + ( process.env.TASK_IMAGE_TAG || '1.23-alpine-perl' )
 const hasPublicSubnets: string = process.env.PUBLIC_SUBNETS || 'false'
+const createTesterLambda: string = process.env.CREATE_TESTER_LAMBDA || 'false'
 
 
 
@@ -45,7 +39,12 @@ const Main = () =>
 {
   
   const app = new cdk.App();
-  console.table(proxyDomains)
+  console.table(proxyDomains, [
+    "CUSTOM_DOMAIN_URL",
+    "PRIVATE_API_URL",
+    "VERBS",
+    // "PUBLIC_ZONE_ID",
+  ]);
   const mainStack = new ProxyServiceStack( app, `${ appName }-${ environment }`, {
     env: {
       account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -61,41 +60,14 @@ const Main = () =>
     externalAlbSgId,
     externalFargateSgId,
     taskImage,
-    hasPublicSubnets
+    hasPublicSubnets,
+    createTesterLambda
   } );
 
 
   cdk.Tags.of( mainStack ).add( 'App', appName );
   cdk.Tags.of( mainStack ).add( 'Environment', environment );
 
-}
-
-const GetDomains = ( sourceYamlPath: string ): proxyDomain[] =>
-{
-  const yamlOutput: any = yaml.load( readFileSync( sourceYamlPath, "utf8" ) )
-  const proxyDomains: proxyDomain[] = yamlOutput?.APIS as proxyDomain[]
-  const domainsList = proxyDomains?.map( ( record ) =>
-  {
-    checkApiGatewayURLPattern( record.PRIVATE_API_URL )
-    return {
-      ...record,
-      CUSTOM_DOMAIN_URL: record.CUSTOM_DOMAIN_URL.replace( 'https://', '' ),
-      //ROUTE53_PUBLIC_DOMAIN provided by application then use that as a top level domain
-      TLD: record.ROUTE53_PUBLIC_DOMAIN ? extractDomain( record.ROUTE53_PUBLIC_DOMAIN, { tld: false } ) : extractDomain( record.CUSTOM_DOMAIN_URL, { tld: false } )
-    }
-
-  } )
-  if ( !domainsList )
-  {
-    throw new Error( 'At least one domain needs to be in proxy-config file to add SSL certificate to load balancer listener.' )
-  }
-
-
-  // console.log( `############## Domain Mapping #################` );
-  // console.table( domainsList );
-  // console.log( `##############################################` );
-
-  return domainsList
 }
 
 function checkApiGatewayURLPattern ( url: string )
@@ -130,9 +102,8 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
     server_names_hash_bucket_size 128;
-
-    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-                      '$status $body_bytes_sent "$http_referer" '
+    log_format  main  '$remote_addr - $remote_user - $server_name $host [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer"'
                       '"$http_user_agent" "$http_x_forwarded_for"';
 
     access_log  /var/log/nginx/access.log  main;
@@ -143,6 +114,7 @@ http {
     keepalive_timeout  65;
 
     #gzip  on;
+
     server {
       listen 80 default_server;      
       location / {

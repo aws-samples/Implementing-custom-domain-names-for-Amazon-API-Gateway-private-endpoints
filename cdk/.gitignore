@@ -1,12 +1,3 @@
-*.env
-*.js
-!jest.config.js
-*.d.ts
-node_modules
-
-# CDK asset staging directory
-.cdk.staging
-cdk.out
 # Created by https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode,node
 # Edit at https://www.gitignore.io/?templates=osx,linux,python,windows,pycharm,visualstudiocode,node
 
@@ -385,23 +376,10 @@ $RECYCLE.BIN/
 ### CDK-specific ignores ###
 *.swp
 cdk.context.json
-cdk_output.json
 package-lock.json
 yarn.lock
 .cdk.staging
 cdk.out
-synth_output.yaml
-cmd.txt
-.env
-nginx copy.conf
-/diagram
-cdk.zip
-arch-diagram.drawio
-**/proxy-config.yaml
-proxy-service/proxy-config.yaml
-proxy-service/proxy-image/nginx.conf
-proxy-service/proxy-image/nginx.conf
-no-spellcheck/*
 
 proxy-service/proxy-image/nginx.conf
 nginx.conf

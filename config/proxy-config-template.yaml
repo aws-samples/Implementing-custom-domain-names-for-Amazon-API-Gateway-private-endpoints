@@ -1,8 +1,0 @@
----
-APIS:
-  - CUSTOM_DOMAIN_URL: private_api1.internal.example.com # URL to proxy access to the private API    
-    ROUTE53_PUBLIC_DOMAIN: internal.example.com # Public domain hosted in Route53 [Optional, required if DNS zone is not a Top Level Domain (i.e. example.com)]
-    PRIVATE_API_URL: https://<api-id>.execute-api.<region>.amazonaws.com/stage/  # Example AWS Account B
-    VERBS: ["GET", "POST"]
-  - CUSTOM_DOMAIN_URL: private_api2.internal.example.com # URL to proxy access to the private API    
-    PRIVATE_API_URL: https://<api-id>.execute-api.<region>.amazonaws.com/stage/  # Example AWS Account B

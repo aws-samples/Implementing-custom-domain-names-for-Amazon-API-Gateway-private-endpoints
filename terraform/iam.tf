@@ -52,7 +52,7 @@ resource "aws_iam_policy" "ecs_service" {
           Action = [
             "logs:CreateLogGroup"
           ]
-          Resource = "*"
+          Resource = "arn:${data.aws_partition.current.id}:logs::${data.aws_caller_identity.current.account_id}:/ecs/${local.service_name}"
         }
       ]
     }

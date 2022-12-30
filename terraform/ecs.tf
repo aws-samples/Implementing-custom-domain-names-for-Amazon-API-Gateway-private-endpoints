@@ -51,7 +51,7 @@ resource "aws_ecs_task_definition" "app" {
   requires_compatibilities = ["FARGATE"]
   runtime_platform {
     operating_system_family = "LINUX"
-    cpu_architecture = var.task_platform
+    cpu_architecture        = var.task_platform
   }
   container_definitions = jsonencode(
     [{
@@ -60,7 +60,7 @@ resource "aws_ecs_task_definition" "app" {
       memory      = 1024
       name        = local.service_name
       networkMode = "awsvpc"
-      entrypoint     = ["/bin/sh","-c","echo $NGINX_CONFIG | base64 -d > /etc/nginx/nginx.conf && nginx && tail -f /dev/null"]
+      entrypoint  = ["/bin/sh", "-c", "echo $NGINX_CONFIG | base64 -d > /etc/nginx/nginx.conf && nginx && tail -f /dev/null"]
       environment = [
         {
           name = "NGINX_CONFIG",
@@ -106,13 +106,13 @@ resource "aws_ecs_service" "nginx" {
   depends_on = [
     module.vpc[0]
   ]
-  name                 = local.service_name
-  cluster              = module.ecs.cluster_id
-  task_definition      = aws_ecs_task_definition.app.arn
-  launch_type          = "FARGATE"
-  scheduling_strategy  = "REPLICA"
-  desired_count        = 1
-  force_new_deployment = true
+  name                   = local.service_name
+  cluster                = module.ecs.cluster_id
+  task_definition        = aws_ecs_task_definition.app.arn
+  launch_type            = "FARGATE"
+  scheduling_strategy    = "REPLICA"
+  desired_count          = 1
+  force_new_deployment   = true
   enable_execute_command = true
   deployment_circuit_breaker {
     enable   = true

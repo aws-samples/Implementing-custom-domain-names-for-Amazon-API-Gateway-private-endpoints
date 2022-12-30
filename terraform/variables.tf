@@ -88,16 +88,16 @@ variable "task_image_tag" {
 }
 
 variable "proxy_config_path" {
-  type = string
+  type    = string
   default = "../config/proxy-config.yaml"
 }
 
 variable "task_platform" {
-  type = string
-  default = "ARM64"
+  type        = string
+  default     = "ARM64"
   description = "CPU platform for ECS task."
   validation {
-    condition = can(regex("(ARM64|X86_64)", var.task_platform))
+    condition     = can(regex("(ARM64|X86_64)", var.task_platform))
     error_message = "Valid task platforms are ARM64 and X86_64"
   }
 }

@@ -15,6 +15,7 @@ import { proxyDomain, elbTypeEnum } from '../bin/Main';
 import { FargateServiceConstruct } from './FargateService';
 import { NetworkingConstruct } from './Networking';
 import { RoutingConstruct } from './Routing';
+import { TesterLambda } from './TesterLambda';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { AwsCustomResource, AwsCustomResourcePolicy, AwsSdkCall, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -32,7 +33,8 @@ type ProxyServiceStackProps = {
     externalAlbSgId?: string
     externalFargateSgId?: string,
     taskImage: string,
-    hasPublicSubnets: string
+    hasPublicSubnets: string,
+    createTesterLambda:string
 } & StackProps
 
 export class ProxyServiceStack extends Stack
@@ -56,7 +58,7 @@ export class ProxyServiceStack extends Stack
         if ( props.create_vpc.toLocaleLowerCase() === "true" )
         {
 
-            console.log( `CREATE_VPC -> TRUE` );
+            console.log( `Create Vpc -> TRUE` );
             const cidr = props.vpc_cidr!;
             const networkingObject = new NetworkingConstruct(
                 this,
@@ -145,7 +147,7 @@ export class ProxyServiceStack extends Stack
 
         }
 
-        console.log( `elb-> ${ props.elbType.toString() }` );
+        console.log( `Load Balancer Type-> ${ props.elbType.toString() }` );
         const routingObject = new RoutingConstruct( this, `${ stackName }-routing`, {
             vpc: vpc,
             elbType: props.elbType!,
@@ -162,10 +164,19 @@ export class ProxyServiceStack extends Stack
             taskImage: props.taskImage
         } )
 
+        if ( props.createTesterLambda.toLocaleLowerCase() === "true" )
+        {
+            console.log( `Create Tester Lambda -> TRUE` );
+            const testerLambda = new TesterLambda(this, `${ stackName }-tester-function`, {
+                vpc: vpc                
+            })
+            new CfnOutput( this, 'tester_lambda_function', { value: testerLambda.lambdaFnName} )
+        }
+        
 
         new CfnOutput( this, 'vpc_id', { value: vpc.vpcId} )
         new CfnOutput( this, 'elb-dns', { value: routingObject.elbDns } )
-        new CfnOutput( this, 'api_gateway_vpce_id', { value: apiGatewayVPCInterfaceEndpointId} )
+        new CfnOutput( this, 'api_gateway_vpce_id', { value: apiGatewayVPCInterfaceEndpointId} )        
 
     }
     _error ( msg: string )

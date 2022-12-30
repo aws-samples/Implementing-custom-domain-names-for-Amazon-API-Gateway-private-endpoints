@@ -13,7 +13,7 @@ type IArguments = {
   proxyFilePath: string
 }
 
-async function run ()
+async function Run ()
 {
   const args = parse<IArguments>(
     {
@@ -46,65 +46,48 @@ const GenerateOutputsFile = ( props: IArguments, proxyDomains: proxyDomain[] ): 
   let outputObj: any = {}
   outputObj.STACK_OUTPUTS = JSON.parse( props.stackOutputs )
 
-  const arrApis: any[] = []
-  const arrPolicyMappings: any[] = []
+  // const arrApis: any[] = []
+  const arrPolicyMappings: any = {}
   proxyDomains.forEach( ( item ) =>
   {
     const api_gateway_id = item.PRIVATE_API_URL.split( 'https://' )[ 1 ].split( '.execute-api' )[ 0 ]
 
     // console.log(`stringHash(item.PRIVATE_API_URL)--> ${stringHash('item.PRIVATE_API_URL')}`);
 
-    const mapping = arrPolicyMappings.find( ( predicate ) =>
+    if ( api_gateway_id in arrPolicyMappings )
     {
-      if ( predicate?.PRIVATE_API_ID === api_gateway_id )
-      {
-        return predicate
-      }
-    } )
-
-    if ( mapping )
-    {
-      mapping.PRIVATE_RESOURCE_POLICY.Statement.push( generateSpecificPolicyStatement( props, item ) )
+      // console.log( 'key1 exists in obj' );
+      arrPolicyMappings[ api_gateway_id ].Statement.push( generateSpecificPolicyStatement( props, item ) )
     } else
     {
-      arrPolicyMappings.push( {
-        PRIVATE_API_ID: api_gateway_id,
-        PRIVATE_RESOURCE_POLICY: {
-          "Version": "2012-10-17",
-          "Statement": [ {
-            Sid: 'reverse-proxy-deny',
-            Effect: "Deny",
-            Principal: "*",
-            Action: "execute-api:Invoke",
-            Resource: generateResources( props, item, 'deny' ),
-            Condition: {
-              "StringNotEquals": {
-                "aws:SourceVpce": `${ apiGatewayVPCInterfaceEndpointId }`
-              }
+      // console.log( 'key1 does not exist in obj' );
+      arrPolicyMappings[ api_gateway_id ] = {
+        "Version": "2012-10-17",
+        "Statement": [ {
+          Sid: 'reverse-proxy-deny',
+          Effect: "Deny",
+          Principal: "*",
+          Action: "execute-api:Invoke",
+          Resource: generateResources( props, item, 'deny' ),
+          Condition: {
+            "StringNotEquals": {
+              "aws:SourceVpce": `${ apiGatewayVPCInterfaceEndpointId }`
             }
-          },
-          generateSpecificPolicyStatement( props, item )
+          }
+        },
+        generateSpecificPolicyStatement( props, item )
 
-          ]
-        }
+        ]
       }
-      )
-
     }
-
-    arrApis.push( {
-      CUSTOM_DOMAIN_URL: item.CUSTOM_DOMAIN_URL,
-      PRIVATE_API_URL: item.PRIVATE_API_URL,
-      PRIVATE_API_ID: api_gateway_id,
-    } );
 
   } )
 
-  outputObj.APIS = arrApis
+  // outputObj.APIS = arrApis
   outputObj.API_RESOURCE_POLICY_MAPPING = arrPolicyMappings
 
   // console.log(`path.parse(props.destinationPath).dir-->${path.parse(props.destinationPath).dir}`);
-  mkdirSync(path.parse(props.destinationPath).dir  , { recursive: true} );
+  mkdirSync( path.parse( props.destinationPath ).dir, { recursive: true } );
   writeFileSync( props.destinationPath, JSON.stringify( outputObj, null, 2 ) )
 
   console.log( `
@@ -178,7 +161,13 @@ const generateResources = ( props: IArguments, item: proxyDomain, policyType: 'd
 
 
 
-run();
-
+( async function ()
+{
+  await Run()
+} )().catch( e =>
+{
+  console.error( e )
+  process.exit( 1 )
+} )
 
 

@@ -6,8 +6,6 @@ import * as aws_route53 from 'aws-cdk-lib/aws-route53';
 import { LoadBalancerTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib'
-import extractDomain from 'extract-domain';
-
 import { proxyDomain, elbTypeEnum } from '../bin/Main';
 
 type RoutingProps = {
@@ -67,7 +65,7 @@ export class RoutingConstruct extends Construct
         } );
 
 
-        // console.log( `uniqueCertWithPublicZones -->  ${ JSON.stringify( uniqueCertWithPublicZones ) }` )
+        // console.log( `uniqueCertWithPublicZones -->  ${ JSON.stringify( uniqueCertWithPublicZones, null, 2 )}` )
 
         // Create wild card certificates and add them to ELB listener
         const certs: aws_cert.Certificate[] = uniqueCertWithPublicZones.map( ( crt ) =>
@@ -227,6 +225,3 @@ export class RoutingConstruct extends Construct
     }
 
 }
-
-
-

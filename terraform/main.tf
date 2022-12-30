@@ -1,12 +1,15 @@
 terraform {
-  required_version = ">=1.2, < 1.4"
+  required_version = ">=1.2, <1.4"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.37.0"
+      version = "~>4.0"
     }
     local = {
       version = "~>2.2.3"
+    }
+    random = {
+      version = "~>3.4.3"
     }
     docker = {
       source  = "kreuzwerker/docker"
@@ -19,7 +22,7 @@ terraform {
       version = "~>2.2.2"
     }
     jq = {
-      source = "massdriver-cloud/jq"
+      source  = "massdriver-cloud/jq"
       version = "~>0.2.1"
     }
   }

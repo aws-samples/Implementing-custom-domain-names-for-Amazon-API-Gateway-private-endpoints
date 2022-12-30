@@ -9,21 +9,37 @@ provider "docker" {
 }
 
 resource "random_string" "repo_suffix" {
-  length = 5
+  length  = 5
   special = false
-  upper = false
+  upper   = false
 }
 
-module "docker_image" {
-  source = "terraform-aws-modules/lambda/aws//modules/docker-build"
+resource "random_string" "image_tag" {
+  length  = 5
+  special = false
+  upper   = false
+  keepers = {
+    platform   = var.task_platform
+    source_img = var.task_image
+    source_tag = var.task_image_tag
+    dockerfile = filesha256("${path.module}/docker/Dockerfile")
+  }
+}
 
-  create_ecr_repo = true
-  ecr_repo = "${local.name_prefix}_${random_string.repo_suffix.result}"
-  ecr_force_delete = true
-  source_path     = "${path.module}/docker"
-  build_args      = {
-      PLATFORM = var.task_platform == "ARM64" ? "linux/arm64" : "linux/amd64"
-      IMAGE = "${var.task_image}:${var.task_image_tag}"
+#tfsec:ignore:aws-ecr-repository-customer-key #ECR repository encrypted with default keys, end-user can adjust using customer managed KMS key if desired.
+module "docker_image" {
+  source               = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version              = "~>4.7.1"
+  create_ecr_repo      = true
+  ecr_repo             = "${local.name_prefix}_${random_string.repo_suffix.result}"
+  ecr_force_delete     = true
+  source_path          = "${path.module}/docker"
+  image_tag_mutability = "IMMUTABLE"
+  scan_on_push         = true
+  image_tag            = random_string.image_tag.result
+  build_args = {
+    PLATFORM = var.task_platform == "ARM64" ? "linux/arm64" : "linux/amd64"
+    IMAGE    = "${var.task_image}:${var.task_image_tag}"
   }
 }
 
@@ -37,7 +53,7 @@ resource "aws_ecr_repository_policy" "ecr_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect= "Allow"
+        Effect = "Allow"
         Action = [
           "ecr:GetAuthorizationToken",
           "ecr:BatchCheckLayerAvailability",

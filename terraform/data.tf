@@ -10,11 +10,3 @@ data "aws_vpc" "selected" {
 }
 
 data "aws_partition" "current" {}
-
-data "aws_route_tables" "selected" {
-  vpc_id = local.vpc_id
-}
-
-data "external" "vpc_dns_support" {
-  program = ["sh", "${path.module}/scripts/enable_dns_support.sh",local.vpc_id]
-}
