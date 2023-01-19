@@ -16,6 +16,7 @@ import { FargateServiceConstruct } from './FargateService';
 import { NetworkingConstruct } from './Networking';
 import { RoutingConstruct } from './Routing';
 
+
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { AwsCustomResource, AwsCustomResourcePolicy, AwsSdkCall, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -27,7 +28,6 @@ type ProxyServiceStackProps = {
     elbType: elbTypeEnum,
     createVpc: string,
     vpcCidr?: string,
-    base64EncodedNginxConf: string
     externalVpcId?: string
     externalPrivateSubnetIds?: string
     externalAlbSgId?: string
@@ -145,7 +145,7 @@ export class ProxyServiceStack extends Stack
                 }
             } )
 
-            apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt( 'Result' ).toString();
+            apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt( 'Result.apiGatewayVpcEndPointId' ).toString();
 
         }
 
@@ -157,17 +157,18 @@ export class ProxyServiceStack extends Stack
             proxyDomains: props.proxyDomains
         } )
 
-        new FargateServiceConstruct( this, `${ stackName }-fargate-service`, {
-            vpc: vpc,
-            elbType: props.elbType!,
-            targetGroup: routingObject.targetGroup,
-            ecsPrivateSG: fgSg,
-            base64EncodedNginxConf: props.base64EncodedNginxConf,
-            taskImage: props.taskImage,
-            taskScaleMin: props.taskScaleMin,
-            taskScaleMax: props.taskScaleMax,
-            taskScaleCpuPercentage:props.taskScaleCpuPercentage
-        } )
+        new FargateServiceConstruct(this, `${stackName}-fargate-service`, {
+          vpc: vpc,
+          executeApiVpceId: apiGatewayVPCInterfaceEndpointId,
+          elbType: props.elbType!,
+          targetGroup: routingObject.targetGroup,
+          ecsPrivateSG: fgSg,
+          proxyDomains: props.proxyDomains,
+          taskImage: props.taskImage,
+          taskScaleMin: props.taskScaleMin,
+          taskScaleMax: props.taskScaleMax,
+          taskScaleCpuPercentage: props.taskScaleCpuPercentage,
+        });
 
         new CfnOutput( this, 'vpc_id', { value: vpc.vpcId } )
         new CfnOutput( this, 'elb-dns', { value: routingObject.elbDns } )

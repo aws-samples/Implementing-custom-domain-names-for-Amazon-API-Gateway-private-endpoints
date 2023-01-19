@@ -128,9 +128,9 @@ EOF
 		esac
 		;;
 	--*) # Invalid option
-		echo "Passing unrecognized argument to execution tool ${1} ${2:-}"
+		echo "Passing unrecognized argument to execution tool ${1} ${2}"
 		downstream_args=${downstream_args:-}
-		downstream_args+=" ${1} ${2:-}"
+		downstream_args+=" ${1} ${2}"
 		;;
 	esac
 	shift
@@ -263,7 +263,7 @@ if [ "${execution_tool}" == "cdk" ]; then
 
 	#install packages
 	echo "Installing Node.js Packages"
-	npm install --silent
+	npm install
 
 	# Check for bootstrap
 	if ! aws cloudformation describe-stacks --stack-name CDKToolkit >/dev/null 2>&1; then

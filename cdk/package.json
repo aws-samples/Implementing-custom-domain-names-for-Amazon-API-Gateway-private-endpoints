@@ -35,10 +35,10 @@
     "constructs": "^10.1.143",
     "extract-domain": "2.4.8",
     "js-yaml": "4.1.0",
+    "npx": "10.2.2",
     "parse-domain": "7.0.1",
     "source-map-support": "^0.5.21",
     "string-hash": "1.1.3",
-    "ts-command-line-args": "2.3.1",
-    "npx": "^10.2.2"
+    "ts-command-line-args": "2.3.1"
   }
 }
