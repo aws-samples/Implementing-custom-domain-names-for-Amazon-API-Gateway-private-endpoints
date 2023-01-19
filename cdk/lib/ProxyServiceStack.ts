@@ -15,7 +15,7 @@ import { proxyDomain, elbTypeEnum } from '../bin/Main';
 import { FargateServiceConstruct } from './FargateService';
 import { NetworkingConstruct } from './Networking';
 import { RoutingConstruct } from './Routing';
-import { TesterLambda } from './TesterLambda';
+
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { AwsCustomResource, AwsCustomResourcePolicy, AwsSdkCall, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -25,8 +25,8 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 type ProxyServiceStackProps = {
     proxyDomains: proxyDomain[],
     elbType: elbTypeEnum,
-    create_vpc: string,
-    vpc_cidr?: string,
+    createVpc: string,
+    vpcCidr?: string,
     base64EncodedNginxConf: string
     externalVpcId?: string
     externalPrivateSubnetIds?: string
@@ -34,7 +34,9 @@ type ProxyServiceStackProps = {
     externalFargateSgId?: string,
     taskImage: string,
     hasPublicSubnets: string,
-    createTesterLambda:string
+    taskScaleMin: number,
+    taskScaleMax: number,
+    taskScaleCpuPercentage: number
 } & StackProps
 
 export class ProxyServiceStack extends Stack
@@ -55,11 +57,11 @@ export class ProxyServiceStack extends Stack
             );
         }
 
-        if ( props.create_vpc.toLocaleLowerCase() === "true" )
+        if ( props.createVpc.toLocaleLowerCase() === "true" )
         {
 
             console.log( `Create Vpc -> TRUE` );
-            const cidr = props.vpc_cidr!;
+            const cidr = props.vpcCidr!;
             const networkingObject = new NetworkingConstruct(
                 this,
                 `${ stackName }-networking`,
@@ -113,37 +115,37 @@ export class ProxyServiceStack extends Stack
 
 
 
-                    const customResourceLambda = new NodejsFunction( this, `${ stackName }-CustomResource-Fn`, {
-                        entry: Path.join( __dirname, 'CustomResource.ts' ),
-                        functionName: `${ stackName }-cr-get-vpc-endpoints`,
-                        // runtime: lambda.Runtime.NODEJS_16_X,
-                    } )
-        
-                    const lambdaPolicy = new PolicyStatement( {
-                        effect: Effect.ALLOW,
-                        actions: [ 'ec2:DescribeVpcEndpoints' ],
-                        resources: [ '*' ],
-                    } )
-        
-                    customResourceLambda.addToRolePolicy( lambdaPolicy );
-        
-                    // Create a custom resource provider which wraps around the lambda above
-                    const customResourceProvider = new cr.Provider( this, `${ stackName }-CRProvider`, {                        
-                        onEventHandler: customResourceLambda,
-                        logRetention: logs.RetentionDays.FIVE_DAYS,
-                    } )
-        
-                    // Create a new custom resource consumer
-                    const objCustomResource = new cdk.CustomResource( this, 'CustomResourceGetVPCEndpoints', {                
-                        resourceType: "Custom::CheckAPIGatewayVPCEndpoint",
-                        serviceToken: customResourceProvider.serviceToken,
-                        properties: {
-                            VpcId: props.externalVpcId,
-                            Dummy: 0
-                          }
-                    } )
+            const customResourceLambda = new NodejsFunction( this, `${ stackName }-CustomResource-Fn`, {
+                entry: Path.join( __dirname, 'CustomResource.ts' ),
+                functionName: `${ stackName }-cr-get-vpc-endpoints`,
+                // runtime: lambda.Runtime.NODEJS_16_X,
+            } )
 
-                apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt( 'Result' ).toString();
+            const lambdaPolicy = new PolicyStatement( {
+                effect: Effect.ALLOW,
+                actions: [ 'ec2:DescribeVpcEndpoints' ],
+                resources: [ '*' ],
+            } )
+
+            customResourceLambda.addToRolePolicy( lambdaPolicy );
+
+            // Create a custom resource provider which wraps around the lambda above
+            const customResourceProvider = new cr.Provider( this, `${ stackName }-CRProvider`, {
+                onEventHandler: customResourceLambda,
+                logRetention: logs.RetentionDays.FIVE_DAYS,
+            } )
+
+            // Create a new custom resource consumer
+            const objCustomResource = new cdk.CustomResource( this, 'CustomResourceGetVPCEndpoints', {
+                resourceType: "Custom::CheckAPIGatewayVPCEndpoint",
+                serviceToken: customResourceProvider.serviceToken,
+                properties: {
+                    VpcId: props.externalVpcId,
+                    Dummy: 0
+                }
+            } )
+
+            apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt( 'Result' ).toString();
 
         }
 
@@ -161,22 +163,15 @@ export class ProxyServiceStack extends Stack
             targetGroup: routingObject.targetGroup,
             ecsPrivateSG: fgSg,
             base64EncodedNginxConf: props.base64EncodedNginxConf,
-            taskImage: props.taskImage
+            taskImage: props.taskImage,
+            taskScaleMin: props.taskScaleMin,
+            taskScaleMax: props.taskScaleMax,
+            taskScaleCpuPercentage:props.taskScaleCpuPercentage
         } )
 
-        if ( props.createTesterLambda.toLocaleLowerCase() === "true" )
-        {
-            console.log( `Create Tester Lambda -> TRUE` );
-            const testerLambda = new TesterLambda(this, `${ stackName }-tester-function`, {
-                vpc: vpc                
-            })
-            new CfnOutput( this, 'tester_lambda_function', { value: testerLambda.lambdaFnName} )
-        }
-        
-
-        new CfnOutput( this, 'vpc_id', { value: vpc.vpcId} )
+        new CfnOutput( this, 'vpc_id', { value: vpc.vpcId } )
         new CfnOutput( this, 'elb-dns', { value: routingObject.elbDns } )
-        new CfnOutput( this, 'api_gateway_vpce_id', { value: apiGatewayVPCInterfaceEndpointId} )        
+        new CfnOutput( this, 'api_gateway_vpce_id', { value: apiGatewayVPCInterfaceEndpointId } )
 
     }
     _error ( msg: string )

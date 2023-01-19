@@ -32,7 +32,7 @@
           }
         },
         {
-          "Sid": "reverse-proxy-allow-873532159",
+          "Sid": "reverse-proxy-allow-873532150",
           "Effect": "Allow",
           "Principal": "*",
           "Action": "execute-api:Invoke",
@@ -44,27 +44,13 @@
           }
         },
         {
-          "Sid": "reverse-proxy-allow-873532159",
-          "Effect": "Allow",
-          "Principal": "*",
-          "Action": "execute-api:Invoke",
-          "Resource": [
-            "execute-api:/dev/*/*"
-          ],
-          "Condition": {
-            "StringEquals": {
-              "aws:Referer": "api2.private.example.com"
-            }
-          }
-        },
-        {
           "Sid": "reverse-proxy-allow-2156649116",
           "Effect": "Allow",
           "Principal": "*",
           "Action": "execute-api:Invoke",
           "Resource": [
-            "execute-api:/dev/GET/path1/path2/path3",
-            "execute-api:/dev/POST/path1/path2/path3"
+            "execute-api:/stage/GET/path1/path2/path3",
+            "execute-api:/stage/POST/path1/path2/path3"
           ],
           "Condition": {
             "StringEquals": {
@@ -97,11 +83,11 @@
           "Principal": "*",
           "Action": "execute-api:Invoke",
           "Resource": [
-            "execute-api:/dev/*/*"
+            "execute-api:/stage/*/*"
           ],
           "Condition": {
             "StringEquals": {
-              "aws:Referer": "api2.private.example.com"
+              "aws:Referer": "api2.private.example2.com"
             }
           }
         }

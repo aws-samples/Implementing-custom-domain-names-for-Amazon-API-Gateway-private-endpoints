@@ -1,10 +1,10 @@
-# Enabling Private APIs with Custom Domain Names with multi-domain and multi-account support
+# Implementing Custom Domain names with a Reverse Proxy for Amazon API Gateway Private Endpoints
 
 This repository implements a feature-rich reverse proxy ingress layer, which supports requirements for enabling private API(s) with custom domain(s) with support for multi-account environment. This solution also supports a simple way to add/ update/ delete mapping between your custom domain(s) and their respective private API(s).
 
 See this blog [post] (future...)
 
-- [Enabling Private APIs with Custom Domain Names with multi-domain and multi-account support](#enabling-private-apis-with-custom-domain-names-with-multi-domain-and-multi-account-support)
+- [Implementing Custom Domain names with a Reverse Proxy for Amazon API Gateway Private Endpoints](#Implementing Custom Domain names with a Reverse Proxy for Amazon API Gateway Private Endpoints)
   - [Services Used](#services-used)
   - [Architecture](#architecture)
   - [Traffic Flow](#traffic-flow)
@@ -14,15 +14,13 @@ See this blog [post] (future...)
     - [Proxy Configuration](#proxy-configuration)
       - [Example proxy-config.yaml file:](#example-proxy-configyaml-file)
     - [Deployment Variables](#deployment-variables)
-      - [Example vars.yaml file:](#example-varsyaml-file)
-  - [Dt Steps](#dt-steps)
+      - [Example vars.yaml file](#example-varsyaml-file)
+  - [Deployment Steps](#deployment-steps)
     - [AWS Cloud Development Kit (CDK)](#aws-cloud-development-kit-cdk)
     - [Terraform](#terraform)
       - [Networking Components](#networking-components)
       - [Rest of the Components](#rest-of-the-components)
     - [Add or Update Resource Policy for private endpoints](#add-or-update-resource-policy-for-private-endpoints)
-      - [Update Mapping File](#update-mapping-file)
-      - [Testing](#testing)
       - [Clean Up](#clean-up)
 
 ## Services Used
@@ -40,7 +38,7 @@ See this blog [post] (future...)
 
 The architecture diagram below illustrates the interactions between the components in the solution and leverages NLB (AWS Network Load Balancer ) or ALB (AWS Application Load Balancer) for routing traffic and AWS Fargate (ECS) for hosting the Nginx reverse proxy to map traffic between the custom domains and their respective private API Gateway endpoints.
 
-![A diagram of the architecture solution Overview](./assets/overview_nlb_alb.png "Solution Overview")
+![A diagram of the architecture solution Overview][def]
 
 ## Traffic Flow
 
@@ -77,7 +75,7 @@ Create a yaml list describing the private apis. The default location for the pro
 
 | Property              | Required | Example Values                                                                     | Description                                                                                                                                                                                         |
 | --------------------- | -------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CUSTOM_DOMAIN_URL** | true     | private.api1.internal.example.com<br>api2.internal.example.com                     | Desired custom url for private api.                                                                                                                                                                 |
+| **CUSTOM_DOMAIN_URL** | true     | api1.private.example.com<br>api2.internal.example.com                     | Desired custom url for private api.                                                                                                                                                                 |
 | **PRIVATE_API_URL**   | true     | https://_\<api-id\>_.execute-api._\<region\>_.amazonaws.com/_\<stage\>_/_\<path\>_ | Execution URL of targeted private API.                                                                                                                                                              |
 | **VERBS**             | false    | [\"GET\"]<br>[\"GET\", \"DELETE\"]                                                 | Comma separated list of authorized [HTTP methods/verbs](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-method-settings-method-request.html#setup-method-add-http-method). |
 
@@ -88,14 +86,16 @@ Create a yaml list describing the private apis. The default location for the pro
 ```yaml
 ---
 APIS:
-  - CUSTOM_DOMAIN_URL: private_api1.internal.example.com
-    PRIVATE_API_URL: https://<api-id>.execute-api.<region>.amazonaws.com/<stage>/
-  - CUSTOM_DOMAIN_URL: private_api2.example.com
-    PRIVATE_API_URL: https://<api-id>.execute-api.<region>.amazonaws.com/<stage>/
-    VERBS: ["GET", "PUT"]
+  - CUSTOM_DOMAIN_URL: api1.private.example.com # URL to proxy access to the private API
+    PRIVATE_API_URL: https://<api-id1>.execute-api.<region>.amazonaws.com/stage/ # Example AWS Account B  
+  - CUSTOM_DOMAIN_URL: api1.internal.private.example.com # URL to proxy access to the private API
+    PRIVATE_API_URL: https://<api-id1>.execute-api.<region>.amazonaws.com/stage/path1/path2/path3  # Example AWS Account B- API with VERBS and path
+    VERBS: ["GET", "POST"]  
+  - CUSTOM_DOMAIN_URL: api2.private.example2.com # URL to proxy access to the private API
+    PRIVATE_API_URL: https://<api-id2>.execute-api.<region>.amazonaws.com/stage/ # Example AWS Account C
 ```
 
-&nbsp;&nbsp;&nbsp;&nbsp;_Template is available in repository at [./samples/proxy-config.yaml](https://gitlab.aws.dev/sddoshi/enabling-custom-domain-names-for-private-api-gateway-endpoints/-/blob/main/config/proxy-config.yaml)_
+&nbsp;&nbsp;&nbsp;&nbsp;_Template is available in repository at [./samples/proxy-config.yaml](samples/proxy-config.yaml)_
 
 ### Deployment Variables
 
@@ -116,19 +116,22 @@ Deployment has multiple options which are declared using a variables file. The d
 | **EXTERNAL_VPC_ENDPOINT_ID**    | String         | \*null                     | VPC endpoint id for execute-api endpoint in external VPC                                                                                                                                                                                                                                                         |
 | **TASK_IMAGE**                  | String         | public.ecr.aws/nginx/nginx | Provide nginx container image reference.<br><details><summary>_Important Image Notes_</summary>_Images are sourced locally and pushed to an ECR repository for deployment. Private repository sources are permitted and will require you to configure your local docker environment's authentication._</details> |
 | **TASK_IMAGE_TAG**              | String         | 1.23-alpine-perl           | Image tag for nginx container image referenced in TASK_IMAGE                                                                                                                                                                                                                                                     |
-| **PROXY_CONFIG_PATH**           | String         | ./config/proxy-config.yaml | Relative path to the proxy configuration file.                                                                                                                                                                                                                                                                   |
+| **PROXY_CONFIG_PATH**           | String         | ./config/proxy-config.yaml | Relative path to the proxy configuration file.
+| **TASK_SCALE_CPU_PCT**          | Number         |     80                     | Metric used to scale fargate task- CPU utilization across all tasks in the service. Number between 0 and 100
+| **TASK_SCALE_MIN**              | Number         |     1                      | Minimum capacity to scale Fargate task
+| **TASK_SCALE_MAX**              | Number         |     4                      | Maximum capacity to scale Fargate task                                                                                                                                                                                                                                             |
 | **PUBLIC_SUBNETS**              | Boolean        | false                      | If CREATE_VPC is true, should the new VPC have public subnets?                                                                                                                                                                                                                                                   |
 | **VPC_CIDR**                    | String         | 10.0.0.0/16                | If CREATE_VPC is true, what CIDR block should the new VPC use.                                                                                                                                                                                                                                                   |
 
 </details>
 
-#### Example vars.yaml file:
+#### Example vars.yaml file
 
 ```yaml
 ---
 VARIABLES:
   - CREATE_VPC: true
-    APP_ENVIRONMENT: dev
+    APP_ENVIRONMENT: Dev
     APP_NAME: reverse-proxy
     ELB_TYPE: NLB
     VPC_CIDR: 10.0.0.0/16
@@ -139,12 +142,15 @@ VARIABLES:
     EXTERNAL_FARGATE_SG_ID:
     TASK_IMAGE: public.ecr.aws/nginx/nginx
     TASK_IMAGE_TAG: 1.23-alpine-perl
-    PROXY_CONFIG_PATH:
-    CREATE_TESTER_LAMBDA: true # Optional field, default is false, Used for testing connectivity to private API gateway using custom domain
+    TASK_SCALE_CPU_PCT: 80 
+    TASK_SCALE_MIN: 1
+    TASK_SCALE_MAX: 2
+    PROXY_CONFIG_PATH: ./config/proxy-config.yaml
 ```
 
-&nbsp;&nbsp;&nbsp;&nbsp;_Template is available in repository at [./samples/vars.yaml](https://gitlab.aws.dev/sddoshi/enabling-custom-domain-names-for-private-api-gateway-endpoints/-/blob/main/samples/vars.yaml)
-## Dt Steps
+&nbsp;&nbsp;&nbsp;&nbsp;_Template is available in repository at [./samples/vars.yaml](samples/vars.yaml)
+
+## Deployment Steps
 
 ### AWS Cloud Development Kit (CDK)
 
@@ -309,7 +315,8 @@ This Infrastructure-as-code (IaC) deployment will create the following component
 - Respective Amazon Route53 private hosted zones, this is based on unique domains found in proxy-config.yaml file.
 - An Application Load Balancer or Network Load balancer, in your given VPC private subnet.
 - ACM certificates for SSL offloading on ELB (Elastic Load Balancer), this is based on domains found in proxy-config.yaml file.
-  **Note**: Creation of SSL certificate for domains in mapping file requires validation with a Route 53 hosted zone. To automate the validation while deploying of the mapping file we have chosen DNS based validation of SSL certificates with the Route 53 **public hosted zone**. A Public hosted zone in Route53 needs to be present for base top level domain(e.g. if you have a domain private.internal.example.com in your mapping file then a top base level domain example.com should be a public hosted zone present in your account for DNS based validation of certificate hosted in ACM to succeed)
+  **Note**: This solution uses ACM to [validate ownership](https://docs.aws.amazon.com/acm/latest/userguide/domain-ownership-validation.html) of domain names that you specify in your configuration during the deployment. A Public hosted zone in Amazon Route53 needs to be present in the same AWS account for a base domain (i.e., example.com) for [DNS validation](https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html) to succeed with any private child domain(s) (e.g., api.private.example.com) used to request your private API endpoints. DNS-based validation allows Infrastructure-As-Code (IaC) deployment to automate certificate validation with the respective public base domain while deploying the solution. Further DNS-based validation also has the added advantage of automatically renewing the ACM certificate before expiry.
+  Automation does not support certificate validation when Route 53 public-hosted zone is another AWS account; The public-hosted zone is hosted by another registrar, Email based certificate validation and importing of external SSL certificates in ACM.
 - DNS of ELB would be added as alias record set in respective private Route53 private hosted zones.
 - IaC application parses proxy-config.yaml file, and creates Nginx configuration file.
 - IaC application builds a Docker image provided Nginx image, and uploads it to Amazon Elastic Container Repository.
@@ -319,38 +326,42 @@ Note: Initial IaC application deployment could take roughly 10 - 15 minutes to d
 
 ### Add or Update Resource Policy for private endpoints
 
-Once the IaC execution is complete. Before private API(s) can be accessed, [You need to create or update an API resource policy referencing VPC Endpoint Id of API gateway interface endpoint](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-vpc-endpoint-policies.html#apigateway-vpc-endpoint-policies-examples). This grants access to the API(s) from your VPCs and VPC endpoints or from VPCs and VPC endpoints in other AWS accounts that you explicitly grant access. You need to deploy your API for the change to take effect on API.
+Once the IaC execution is complete. Before private API(s) can be accessed, [You need to create or update an API resource policy referencing VPC Endpoint Id of API gateway interface endpoint](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-vpc-endpoint-policies.html#apigateway-vpc-endpoint-policies-examples). This grants access to the API(s) from your VPCs and VPC endpoints or from VPCs and VPC endpoints in other AWS accounts that you explicitly grant access. You need to deploy your API for the change to take effect on API. You can perform these updates using in multiple ways.
 
-- You can perform these updates using the API Gateway console, the AWS CLI, an AWS SDK for API Gateway or using your deployment pipelines.
-- There are currently multiple ways to update resource policy configuration on your API(s).
-  - You can manually copy VPC Endpoint Id (Interface Endpoint of API Gateway) found in Account A  (Id can be found in generated outputs/outputs.json file as well) into the resource policy of the private API gateway in service accounts, and deploy respective private API using their deployment pipelines. Find API Gateway policy examples [here](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-vpc-endpoint-policies.html#apigateway-vpc-endpoint-policies-examples)
-  - You can copy resource policy for a specific private API from outputs/outputs.json file. Sample outputs file is available in repository at [./samples/outputs.json](https://gitlab.aws.dev/sddoshi/enabling-custom-domain-names-for-private-api-gateway-endpoints/-/blob/main/samples/outputs.json)
-  
-  - You can use scripts/update_api_resource_policy.sh to update and deploy specific api as follows.
+- Using API Gateway console, the AWS CLI, an AWS SDK for API Gateway or using your deployment pipelines.
+- You can manually copy VPC Endpoint Id (Interface Endpoint of API Gateway) found in Account A  (Id can be found in generated outputs/outputs.json file) into the resource policy of the private API gateway in service accounts, and deploy respective private API using their deployment pipelines. Find API Gateway policy examples [here](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-vpc-endpoint-policies.html#apigateway-vpc-endpoint-policies-examples)
+- You can copy API Gateway resource policy for a specific private API from your ./outputs/outputs.json file. Sample outputs file is available in repository at [./samples/outputs.json](/samples/outputs.json)  
+- You can use provided sample script [update_api_resource_policy.sh](samples/update_api_resource_policy.sh) to update and deploy specific API resource policy as follows.
 
-     ```bash
-       AWS_PROFILE=<your_account_B_profile>
-       AWS_REGION=<you_aws_region>
-       PRIVATE_API_ID=<private_api_id>
-       PRIVATE_API_STAGE_NAME=<private_api_stage_name>
-       OUTPUT_FILE_PATH=<output_file_path> # Optional
+   ```bash
+     AWS_PROFILE=<your_account_B_profile>
+     AWS_REGION=<you_aws_region>
+     PRIVATE_API_ID=<private_api_id>
+     PRIVATE_API_STAGE_NAME=<private_api_stage_name>
+     OUTPUT_FILE_PATH=<output_file_path> # Optional, if not provided, checks for outputs.json file in outputs directory
 
-       ./scripts/update_api_resource_policy.sh --private_api_id $PRIVATE_API_ID  \   
-                                        --private_api_stage_name $PRIVATE_API_STAGE_NAME \
-                                        --aws_profile $AWS_PROFILE \
-                                        --aws_region $AWS_REGION \
-                                        --output_file_path $OUTPUT_FILE_PATH 
-      
-      ```
+     ./samples/update_api_resource_policy.sh --private_api_id $PRIVATE_API_ID  \   
+                                      --private_api_stage_name $PRIVATE_API_STAGE_NAME \
+                                      --aws_profile $AWS_PROFILE \
+                                      --aws_region $AWS_REGION \
+                                      --output_file_path $OUTPUT_FILE_PATH 
+    
+    ```
 
 #### Update Mapping File
 
-  Deploy the IaC application again [similar to](#Deployment Steps) with updated mapping file values.
+  Update and save the mapping file with your changes. Deploy the Infrastructure-as-Code application again [similar to](#Deployment Steps).
 
 #### Testing
 
-You can test API request against private custom domain name. From a bastion host within the VPC or other device that can route to the VPC, execute curl -s -XGET <https://api.private.example.com/stage> | jq .
-Response will include something like the following:
+You can test API request against private custom domain name. From a bastion host within the VPC or other device that can route to the VPC run following command,
+
+```bash
+curl -s -XGET <https://api.private.example.com/stage> | jq .
+
+```
+
+Response will include something like the following, this is a return response from the Lambda function behind the Private API in service account. Response includes some of the details captured from event object of the Lambda function.
 
 ```json
 {
@@ -392,3 +403,5 @@ Are you sure you want to delete: <stack-name> (y/n)?
 Enter a value: y
 
 ```
+
+[def]: ./assets/overview.png "Solution Overview"

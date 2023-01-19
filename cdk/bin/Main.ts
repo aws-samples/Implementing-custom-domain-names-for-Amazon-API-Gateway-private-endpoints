@@ -12,7 +12,7 @@ export type proxyDomain = {
   ROUTE53_PUBLIC_DOMAIN?: string,
   VERBS?: string[],
   PUBLIC_ZONE_ID?: string,
-  CERT_DOMAIN?:string,
+  CERT_DOMAIN?: string,
 }
 export enum elbTypeEnum
 {
@@ -31,20 +31,20 @@ const externalAlbSgId: string = process.env.EXTERNAL_ALB_SG_ID || ''
 const externalFargateSgId: string = process.env.EXTERNAL_FARGATE_SG_ID || ''
 const taskImage: string = ( process.env.TASK_IMAGE || 'public.ecr.aws/nginx/nginx' ) + ":" + ( process.env.TASK_IMAGE_TAG || '1.23-alpine-perl' )
 const hasPublicSubnets: string = process.env.PUBLIC_SUBNETS || 'false'
-const createTesterLambda: string = process.env.CREATE_TESTER_LAMBDA || 'false'
-
-
+const taskScaleMin: number = Number(process.env.TASK_SCALE_MIN || '1')
+const taskScaleMax: number = Number(process.env.TASK_SCALE_CPU || '4')
+const taskScaleCpuPercentage: number = Number(process.env.TASK_SCALE_MAX || '80')
 
 const Main = () =>
 {
-  
+
   const app = new cdk.App();
-  console.table(proxyDomains, [
+  console.table( proxyDomains, [
     "CUSTOM_DOMAIN_URL",
     "PRIVATE_API_URL",
     "VERBS",
     // "PUBLIC_ZONE_ID",
-  ]);
+  ] );
   const mainStack = new ProxyServiceStack( app, `${ appName }-${ environment }`, {
     env: {
       account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -52,8 +52,8 @@ const Main = () =>
     },
     proxyDomains: proxyDomains,
     elbType: elbType,
-    create_vpc: createVpc,
-    vpc_cidr: vpcCidr,
+    createVpc,
+    vpcCidr,
     base64EncodedNginxConf: btoa( GenerateNginxConfig( proxyDomains ) ), //base 64 encoded Nginx config file 
     externalVpcId,
     externalPrivateSubnetIds,
@@ -61,10 +61,11 @@ const Main = () =>
     externalFargateSgId,
     taskImage,
     hasPublicSubnets,
-    createTesterLambda
+    taskScaleMin,
+    taskScaleMax,
+    taskScaleCpuPercentage
   } );
-
-
+  
   cdk.Tags.of( mainStack ).add( 'App', appName );
   cdk.Tags.of( mainStack ).add( 'Environment', environment );
 

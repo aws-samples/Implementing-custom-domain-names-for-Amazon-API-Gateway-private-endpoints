@@ -17,7 +17,10 @@ type FargateProps = {
     targetGroup: NetworkTargetGroup | ApplicationTargetGroup
     elbType: elbTypeEnum | void,
     base64EncodedNginxConf: string,
-    taskImage: string
+    taskImage: string,
+    taskScaleMin: number,
+    taskScaleMax: number,
+    taskScaleCpuPercentage: number
 }
 
 export class FargateServiceConstruct extends Construct
@@ -170,8 +173,8 @@ export class FargateServiceConstruct extends Construct
 
 
         const scalableTaskCountObject = service.autoScaleTaskCount( {
-            maxCapacity: 4,
-            minCapacity: 1
+            minCapacity: props.taskScaleMin,
+            maxCapacity: props.taskScaleMax            
         } )
 
         // Scale in or out based on request received
@@ -181,7 +184,7 @@ export class FargateServiceConstruct extends Construct
         // } )
 
         scalableTaskCountObject.scaleOnCpuUtilization( id, {
-            targetUtilizationPercent: 80
+            targetUtilizationPercent: props.taskScaleCpuPercentage
         } )
     }
 }

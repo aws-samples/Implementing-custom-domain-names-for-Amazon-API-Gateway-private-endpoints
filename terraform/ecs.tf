@@ -19,8 +19,8 @@ resource "null_resource" "proxy_config" {
 }
 
 resource "aws_appautoscaling_target" "ecs_target" {
-  max_capacity       = 4
-  min_capacity       = 1
+  max_capacity       = var.task_scale_max
+  min_capacity       = var.task_scale_min
   resource_id        = "service/${module.ecs.cluster_name}/${aws_ecs_service.nginx.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
@@ -37,7 +37,7 @@ resource "aws_appautoscaling_policy" "ecs_policy" {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
-    target_value       = 80
+    target_value       = var.task_scale_cpu_pct
     scale_in_cooldown  = 60
     scale_out_cooldown = 60
   }

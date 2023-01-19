@@ -101,3 +101,21 @@ variable "task_platform" {
     error_message = "Valid task platforms are ARM64 and X86_64"
   }
 }
+
+variable "task_scale_min" {
+  type        = number
+  description = "Minimum NGINX tasks"
+  default     = 1
+}
+
+variable "task_scale_max" {
+  type        = number
+  description = "Maximum NGINX tasks"
+  default     = 4
+}
+
+variable "task_scale_cpu_pct" {
+  type        = number
+  description = "CPU usage percentage that will cause ECS to increase the task count."
+  default     = 80
+}
