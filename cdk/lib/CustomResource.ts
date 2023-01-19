@@ -13,7 +13,8 @@ const interfaceEndpoints = [
 ]
 export const handler = async ( event: CloudFormationCustomResourceEvent, context: any ) =>
 {
-  let apiGatewayVpcEndPointId = '';
+  let apiGatewayVpcEndPointId = ''
+  let apiGatewayVpcDNSName = ''
   // console.log(`event -----------> ${event}`);
 
 
@@ -44,21 +45,22 @@ export const handler = async ( event: CloudFormationCustomResourceEvent, context
         );
         if ( endpoint )
         {
-          if ( endpoint.PrivateDnsEnabled.toString() === "false" )
-          {
-            throw new Error(
-              `Private DNS should be Enabled on VPC Endpoint com.amazonaws.${ region }.${ interfaceEndpoint } `
-            );
-          }
+          // if ( endpoint.PrivateDnsEnabled.toString() === "false" )
+          // {
+          //   throw new Error(
+          //     `Private DNS should be Enabled on VPC Endpoint com.amazonaws.${ region }.${ interfaceEndpoint } `
+          //   );
+          // }
 
-          console.log(`interfaceEndpoint -> ${interfaceEndpoint} , endpoint.VpcEndpointId --> ${endpoint.VpcEndpointId}`);
+          console.log( `interfaceEndpoint -> ${ interfaceEndpoint } , endpoint.VpcEndpointId --> ${ endpoint.VpcEndpointId }` );
 
           if ( interfaceEndpoint === "execute-api" )
           {
             apiGatewayVpcEndPointId = endpoint.VpcEndpointId
-          } 
+            apiGatewayVpcDNSName = endpoint.DnsEntries[0].DnsName
+          }
 
-          console.log( `Interface endpoint Found com.amazonaws.${ region }.${ interfaceEndpoint }, Private DNS is Enabled ` );
+          console.log( `apiGatewayVpcDNSName---> ${ apiGatewayVpcDNSName }` );
         }
         else
         {
@@ -85,7 +87,7 @@ export const handler = async ( event: CloudFormationCustomResourceEvent, context
 
       return {
         Data: {
-          Result: apiGatewayVpcEndPointId.toString()
+          Result: apiGatewayVpcDNSName
         }
       }
       break;

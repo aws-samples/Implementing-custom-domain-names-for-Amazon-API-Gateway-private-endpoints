@@ -165,7 +165,9 @@ export class NetworkingConstruct extends Construct
             vpc: vpc,
             service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY, // new ec2.InterfaceVpcEndpointService( `com.amazonaws.${ Stack.of( this ).region }.execute-api` ),            
             securityGroups: [ endpointSG, defaultSG ]
-        } );
+        } )
+
+        // console.log(`this.apiGatewayVPCInterfaceEndpoint.vpcEndpointDnsEntries---> ${JSON.stringify(this.apiGatewayVPCInterfaceEndpoint.vpcEndpointDnsEntries)}`);
 
         // Create Interface Endpoint for Logs Gateway
         new ec2.InterfaceVpcEndpoint( this, `${ stackName }-logs-interface-endpoint`, {

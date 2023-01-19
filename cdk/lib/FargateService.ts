@@ -1,5 +1,5 @@
 import { elbTypeEnum } from '../bin/Main'
-
+import * as Path from 'path'
 import { Construct } from 'constructs'
 import * as cdk from 'aws-cdk-lib';
 import * as ecs from 'aws-cdk-lib/aws-ecs'
@@ -7,21 +7,27 @@ import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as cr from 'aws-cdk-lib/custom-resources'
+import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs'
 
 import { ApplicationTargetGroup, NetworkTargetGroup } from 'aws-cdk-lib/aws-elasticloadbalancingv2'
+import { proxyDomain } from '../bin/Main';
+import { GenerateNginxConfig } from './Utils';
 
 
 type FargateProps = {
-    vpc: ec2.Vpc,
-    ecsPrivateSG: ec2.SecurityGroup,
-    targetGroup: NetworkTargetGroup | ApplicationTargetGroup
-    elbType: elbTypeEnum | void,
-    base64EncodedNginxConf: string,
-    taskImage: string,
-    taskScaleMin: number,
-    taskScaleMax: number,
-    taskScaleCpuPercentage: number
-}
+    vpc: ec2.Vpc;
+    executeApiVpceId: string;
+    ecsPrivateSG: ec2.SecurityGroup;
+    targetGroup: NetworkTargetGroup | ApplicationTargetGroup;
+    elbType: elbTypeEnum | void;
+    proxyDomains: proxyDomain[];
+    taskImage: string;
+    taskScaleMin: number;
+    taskScaleMax: number;
+    taskScaleCpuPercentage: number;
+};
 
 export class FargateServiceConstruct extends Construct
 {
@@ -30,18 +36,12 @@ export class FargateServiceConstruct extends Construct
         super( scope, id )
         const stackName = cdk.Stack.of( this ).stackName
 
-        //Create pull through cache rule 
-        // const cfnPullThroughCacheRule = new ecr.CfnPullThroughCacheRule( this, `${ stackName }-rule`, {
-        //     ecrRepositoryPrefix: `ecr-public-1`,
-        //     upstreamRegistryUrl: 'public.ecr.aws',
-        // } );
-
         // cluster to deploy resources to
         const cluster = new ecs.Cluster( this, `${ stackName }-cluster`, {
             vpc: props.vpc,
         } )
 
-        // the role assumed by the task and its containers
+        // // the role assumed by the task and its containers
         const taskRole = new iam.Role( this, `${ stackName }-task-role`, {
             assumedBy: new iam.ServicePrincipal( "ecs-tasks.amazonaws.com" ),
             //roleName: "task-role",
@@ -50,7 +50,7 @@ export class FargateServiceConstruct extends Construct
 
         taskRole.attachInlinePolicy(
             new iam.Policy( this, `${ stackName }-task-policy`, {
-                statements: [                    
+                statements: [
                     new iam.PolicyStatement( {
                         effect: iam.Effect.ALLOW,
                         actions: [
@@ -67,39 +67,10 @@ export class FargateServiceConstruct extends Construct
                                 "aws:sourceVpc": props.vpc.vpcId
                             }
                         }
-                    } )                    
+                    } )
                 ],
             } )
         )
-
-        // const oneTimeTask = new ecs.FargateTaskDefinition( this, `${ stackName }-one-time-task`, {
-        //     cpu: 256,
-        //     memoryLimitMiB: 512,
-        //     taskRole: taskRole,
-        //     executionRole: taskRole,
-        // } )
-
-
-        // oneTimeTask.addContainer( id, {
-        //     image: ecs.ContainerImage.fromRegistry( `${ cdk.Aws.ACCOUNT_ID }.dkr.ecr.${ cdk.Aws.REGION }.amazonaws.com/ecr-public-1/nginx/nginx:1.23-alpine-perl` ),
-        //     logging: ecs.LogDriver.awsLogs( {
-        //         streamPrefix: `${ stackName }-fargate-one-time-task`,
-        //         logRetention: logs.RetentionDays.ONE_MONTH,
-        //     } ),
-
-        // } )
-
-        // // deploy and run this task once
-        // const runTaskAtOnce = new run_task.RunTask( this, `${ stackName }-RunTaskOnce`, {
-        //     task: oneTimeTask,
-        //     runAtOnce: true,
-        //     cluster: cluster,
-        //     vpc: props.vpc,
-        //     vpcSubnets: {
-        //         subnetType: cdk.aws_ec2.SubnetType.PUBLIC
-        //     },
-        //     runOnResourceUpdate: true
-        // } );
 
         const taskDefinition = new ecs.FargateTaskDefinition(
             this,
@@ -107,46 +78,77 @@ export class FargateServiceConstruct extends Construct
             {
                 cpu: 256,
                 taskRole: taskRole,
-                executionRole: taskRole,                
+                executionRole: taskRole,
             }
-        )       
+        )
 
-        // The docker container including the image to use        
-        const fgContainer = new ecs.ContainerDefinition(
+        const customResourceLambda = new NodejsFunction( this, `${ stackName }-crFn-interfaceDNS`, {
+            entry: Path.join( __dirname, 'CustomResource.ts' ),
+            functionName: `${ stackName }-cr-get-vpc-endpoints-dns`,
+            // runtime: lambda.Runtime.NODEJS_16_X,
+        } )
+
+        const lambdaPolicy = new PolicyStatement( {
+            effect: Effect.ALLOW,
+            actions: [ 'ec2:DescribeVpcEndpoints' ],
+            resources: [ '*' ],
+        } )
+
+        customResourceLambda.addToRolePolicy( lambdaPolicy );
+
+        // Create a custom resource provider which wraps around the lambda above
+        const customResourceProvider = new cr.Provider( this, `${ stackName }-CRProvider-interfaceDNS`, {
+            onEventHandler: customResourceLambda,
+            logRetention: logs.RetentionDays.FIVE_DAYS,
+        } )
+
+        // Create a new custom resource consumer
+        const objCustomResource = new cdk.CustomResource(
           this,
-          `${stackName}-container-def`,
+          "CustomResourceGetVPCEndpointsDns",
           {
-            taskDefinition: taskDefinition,
-            memoryLimitMiB: 512,
-            // image: ecs.ContainerImage.fromRegistry(
-            //   "public.ecr.aws/nginx/nginx:1.23-alpine-perl",              
-            //   {                
-            //     credentials: cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, 'id', 'secretName') 
-            //   }
-            // ),
-            // image: ecs.ContainerImage.fromRegistry(`${cdk.Aws.ACCOUNT_ID}.dkr.ecr.${cdk.Aws.REGION}.amazonaws.com/ecr-public-1/nginx/nginx:1.23-alpine-perl` ),
-            image: ecs.ContainerImage.fromAsset("./image", {
-              buildArgs: {
-                TASK_IMAGE: props.taskImage,
-              },
-              platform: ecr_assets.Platform.LINUX_AMD64,
-            }),
-            portMappings: [{ containerPort: 80 }],
-            logging: ecs.LogDriver.awsLogs({
-              streamPrefix: `${stackName}-fargate-service`,
-              logRetention: logs.RetentionDays.ONE_MONTH,
-            }),
-            environment: {
-              NGINX_CONFIG: props.base64EncodedNginxConf,
+            resourceType: "Custom::CheckAPIGatewayVPCEndpointDns",
+            serviceToken: customResourceProvider.serviceToken,
+            properties: {
+              VpcId: props.vpc.vpcId,
+              Dummy: 0,
             },
-            entryPoint: [
-              "/bin/sh",
-              "-c",
-              "echo $NGINX_CONFIG | base64 -d > /etc/nginx/nginx.conf && nginx && tail -f /dev/null",
-            ],
           }
         );
+        
+        const apiGatewayVPCInterfaceEndpointDNSName = objCustomResource.getAtt('Result').toString()
+        
+        // The docker container including the image to use        
+        const fgContainer = new ecs.ContainerDefinition(
+            this,
+            `${ stackName }-container-def`,
+            {
+                taskDefinition: taskDefinition,
+                memoryLimitMiB: 512,
+                image: ecs.ContainerImage.fromAsset( "./image", {
+                    buildArgs: {
+                        TASK_IMAGE: props.taskImage,
+                    },
+                    platform: ecr_assets.Platform.LINUX_AMD64,
+                } ),
+                portMappings: [ { containerPort: 80 } ],
+                logging: ecs.LogDriver.awsLogs( {
+                    streamPrefix: `${ stackName }-fargate-service`,
+                    logRetention: logs.RetentionDays.ONE_MONTH,
+                } ),
+                environment: {
+                    NGINX_CONFIG: btoa( GenerateNginxConfig( props.proxyDomains) ), //base 64 encoded Nginx config file 
+                    API_GATEWAY_VPC_DNS: apiGatewayVPCInterfaceEndpointDNSName
+                },
+                entryPoint: [
+                    "/bin/sh",
+                    "-c",
+                    "echo $NGINX_CONFIG | base64 -d | sed -e \"s/API_GATEWAY_VPC_DNS_/${API_GATEWAY_VPC_DNS}/g\" > /etc/nginx/nginx.conf && nginx && tail -f /dev/null",
+                ],
+            }
+        );
 
+        fgContainer.node.addDependency(objCustomResource);
 
 
         // The ECS Service used for deploying tasks 
@@ -157,9 +159,9 @@ export class FargateServiceConstruct extends Construct
             desiredCount: 1,
             taskDefinition: taskDefinition,
             securityGroups: [ props.ecsPrivateSG ],
-            circuitBreaker: {
-                rollback: true               
-            }
+            // circuitBreaker: {
+            //     rollback: true
+            // }
         } )
 
         //  service.attachToApplicationTargetGroup( props.albTG )
@@ -174,7 +176,7 @@ export class FargateServiceConstruct extends Construct
 
         const scalableTaskCountObject = service.autoScaleTaskCount( {
             minCapacity: props.taskScaleMin,
-            maxCapacity: props.taskScaleMax            
+            maxCapacity: props.taskScaleMax
         } )
 
         // Scale in or out based on request received
