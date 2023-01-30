@@ -43,7 +43,7 @@ http {
 
     sendfile        on;
     #tcp_nopush     on;
-
+ 
     keepalive_timeout  65;
 
     #gzip  on;
@@ -71,8 +71,9 @@ http {
       location / {          
           proxy_set_header X-Upstream-Domain  $server_name;          
           proxy_set_header Referer  $server_name;
+          proxy_set_header x-apigw-api-id ${ apiId }
           set $apiUrl ${ privateAPIurl };
-          proxy_pass ${ privateAPIurl };
+          proxy_pass $apiUrl;
           
       }
     }
