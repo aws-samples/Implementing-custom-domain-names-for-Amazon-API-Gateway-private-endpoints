@@ -301,14 +301,10 @@ This Infrastructure-as-code (IaC) deployment will create the following component
 - A security group which will be attached to your interface endpoints
 - Private links endpoints for following services
   - Interface endpoint for API Gateway
-    - DNS name enabled
   - Interface endpoint for ECR API
-    - DNS name enabled
   - Interface endpoint for ECR Registry
-    - DNS name enabled
   - Interface endpoint for Logs
-    - DNS name enabled
-  - Gateway endpoint for S3
+  - Interface endpoint for S3
 
 #### Rest of the Components
 
