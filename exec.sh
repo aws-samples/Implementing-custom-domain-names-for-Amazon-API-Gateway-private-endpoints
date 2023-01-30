@@ -149,16 +149,14 @@ if [ -z "${action}" ]; then
 fi
 
 # Source Variables File
-default_var_file="${src_dir}/config/vars-template.yaml"
-var_file=${var_file:-./config/vars.yaml}
-var_file="${src_dir}/${var_file}"
+var_file=${var_file:-"${src_dir}/config/vars.yaml"}
+var_file=$(readlink -f "${var_file}")
 if ! [ -f "${var_file}" ]; then
 	cat <<EOF
 INFO: No --vars argument provided and no vars.yaml found.
-Place a valid vars.yaml file in ${PWD}/config
+Place a valid vars.yaml file in ${src_dir}/config
 A default vars file has been provided and will be used for this execution
 EOF
-	var_file="${default_var_file}"
 fi
 
 # Export variables from vars file
