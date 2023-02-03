@@ -1,6 +1,6 @@
 import * as Path from 'path'
 
-import { CfnOutput, Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, CfnWaitCondition, CfnWaitConditionHandle, Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import * as cdk from 'aws-cdk-lib';
@@ -11,11 +11,10 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs'
 
 
-import { proxyDomain, elbTypeEnum } from '../bin/Main';
+import { proxyDomain, elbTypeEnum, } from '../bin/Main';
 import { FargateServiceConstruct } from './FargateService';
 import { NetworkingConstruct } from './Networking';
 import { RoutingConstruct } from './Routing';
-
 
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { AwsCustomResource, AwsCustomResourcePolicy, AwsSdkCall, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
@@ -28,6 +27,7 @@ type ProxyServiceStackProps = {
     elbType: elbTypeEnum,
     createVpc: string,
     vpcCidr?: string,
+    base64EncodedNginxConf: string
     externalVpcId?: string
     externalPrivateSubnetIds?: string
     externalAlbSgId?: string
@@ -82,16 +82,16 @@ export class ProxyServiceStack extends Stack
             console.log( `CREATE_VPC -> FALSE` );
             const vpcId =
                 props.externalVpcId ||
-                this._error( "EXTERNAL_VPC_ID is required when CREATE_VPC is false" );
+                this._error( "EXTERNAL_VPC_ID is required when CREATE_VPC is false. Check ReadMe.md for detailed instructions" );
             const fgSgId =
                 props.externalFargateSgId ||
                 this._error(
-                    "Fargate Security Group ID EXTERNAL_FARGATE_SG_ID is required when CREATE_VPC is false"
+                    "Fargate Security Group ID EXTERNAL_FARGATE_SG_ID is required when CREATE_VPC is false. Check ReadMe.md for detailed instructions"
                 );
             const albSgId: string =
                 props.externalAlbSgId ||
                 this._error(
-                    "Application load balancer Security Group EXTERNAL_ALB_SG_ID is required when CREATE_VPC is false and Load Balancer is ALB "
+                    "Application load balancer Security Group EXTERNAL_ALB_SG_ID is required when CREATE_VPC is false and Load Balancer is ALB. Check ReadMe.md for detailed instructions"
                 );
 
             vpc = ec2.Vpc.fromLookup( this, `${ stackName }-vpc`, {
@@ -115,38 +115,68 @@ export class ProxyServiceStack extends Stack
 
 
 
-            const customResourceLambda = new NodejsFunction( this, `${ stackName }-CustomResource-Fn`, {
-                entry: Path.join( __dirname, 'CustomResource.ts' ),
-                functionName: `${ stackName }-cr-get-vpc-endpoints`,
-                // runtime: lambda.Runtime.NODEJS_16_X,
-            } )
+            const customResourceLambda = new NodejsFunction(
+              this,
+              `${stackName}-CustomResource-Fn`,
+              {
+                entry: Path.join(__dirname, "ExistResourceCheckCR.ts"),
+                functionName: `${stackName}-cr-get-vpc-endpoints`,
+                runtime: lambda.Runtime.NODEJS_18_X,
+                timeout: Duration.minutes(5),
+                bundling: {
+                  externalModules: ["@aws-sdk/client-ec2"],
+                },
+              }
+            );
 
             const lambdaPolicy = new PolicyStatement( {
                 effect: Effect.ALLOW,
-                actions: [ 'ec2:DescribeVpcEndpoints' ],
-                resources: [ '*' ],
-            } )
+                actions: [
+                    "ec2:DescribeVpcEndpoints",
+                    "ec2:CreateVpcEndpoint",
+                    "ec2:DeleteVpcEndpoints",
+                    "ec2:UpdateVpcEndpoint",
+                    "ec2:DescribeRouteTables"
+                ],
+                resources: [ "*" ],
+            } );
 
             customResourceLambda.addToRolePolicy( lambdaPolicy );
 
             // Create a custom resource provider which wraps around the lambda above
-            const customResourceProvider = new cr.Provider( this, `${ stackName }-CRProvider`, {
+            const customResourceProvider = new cr.Provider(
+              this,
+              `${stackName}-CRProvider`,
+              {
                 onEventHandler: customResourceLambda,
                 logRetention: logs.RetentionDays.FIVE_DAYS,
-            } )
+                // totalTimeout: Duration.minutes(5),
 
-            // Create a new custom resource consumer
-            const objCustomResource = new cdk.CustomResource( this, 'CustomResourceGetVPCEndpoints', {
-                resourceType: "Custom::CheckAPIGatewayVPCEndpoint",
-                serviceToken: customResourceProvider.serviceToken,
-                properties: {
-                    VpcId: props.externalVpcId,
-                    Dummy: 0
+              }
+            );
+
+           
+            
+            const objCustomResource = new cdk.CustomResource(
+                this,
+                `CustomResourceCreateVPCEndpoints`,
+                {
+                    resourceType: "Custom::CheckAPIGatewayVPCEndpoint",
+                    serviceToken: customResourceProvider.serviceToken,
+                    properties: {
+                        vpcId: props.externalVpcId,                        
+                        externalPrivateSubnetIds: props.externalPrivateSubnetIds ||
+                            this._error(
+                                "List of EXTERNAL_PRIVATE_SUBNETS_ID are required when CREATE_VPC is false. Check ReadMe.md for detailed instructions"
+                            ),
+                        Dummy: 2,
+                    },
+
                 }
-            } )
+            )           
 
-            apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt( 'Result.apiGatewayVpcEndPointId' ).toString();
-
+               
+            apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt( 'executeAPIVpcEndpointId' ).toString();
         }
 
         console.log( `Load Balancer Type-> ${ props.elbType.toString() }` );
@@ -154,21 +184,22 @@ export class ProxyServiceStack extends Stack
             vpc: vpc,
             elbType: props.elbType!,
             albSG: albSg,
-            proxyDomains: props.proxyDomains
+            proxyDomains: props.proxyDomains,
+            createVpc: props.createVpc,
+            externalPrivateSubnetIds: props.createVpc === "false" ? props.externalPrivateSubnetIds : undefined
         } )
 
-        new FargateServiceConstruct(this, `${stackName}-fargate-service`, {
-          vpc: vpc,
-          executeApiVpceId: apiGatewayVPCInterfaceEndpointId,
-          elbType: props.elbType!,
-          targetGroup: routingObject.targetGroup,
-          ecsPrivateSG: fgSg,
-          proxyDomains: props.proxyDomains,
-          taskImage: props.taskImage,
-          taskScaleMin: props.taskScaleMin,
-          taskScaleMax: props.taskScaleMax,
-          taskScaleCpuPercentage: props.taskScaleCpuPercentage,
-        });
+        new FargateServiceConstruct( this, `${ stackName }-fargate-service`, {
+            vpc: vpc,
+            elbType: props.elbType!,
+            targetGroup: routingObject.targetGroup,
+            ecsPrivateSG: fgSg,
+            base64EncodedNginxConf: props.base64EncodedNginxConf,
+            taskImage: props.taskImage,
+            taskScaleMin: props.taskScaleMin,
+            taskScaleMax: props.taskScaleMax,
+            taskScaleCpuPercentage:props.taskScaleCpuPercentage
+        } )
 
         new CfnOutput( this, 'vpc_id', { value: vpc.vpcId } )
         new CfnOutput( this, 'elb-dns', { value: routingObject.elbDns } )

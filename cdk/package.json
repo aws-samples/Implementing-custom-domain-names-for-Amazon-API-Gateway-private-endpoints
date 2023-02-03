@@ -11,10 +11,12 @@
     "cdk": "npx cdk"
   },
   "devDependencies": {
+    "@types/aws-lambda": "8.10.109",
     "@types/jest": "^27.5.2",
     "@types/node": "10.17.27",
     "@types/prettier": "2.6.0",
     "aws-cdk": "2.49.0",
+    "aws-lambda": "1.0.7",
     "jest": "^27.5.1",
     "ts-jest": "^27.1.4",
     "ts-node": "^10.9.1",
@@ -35,7 +37,7 @@
     "constructs": "^10.1.143",
     "extract-domain": "2.4.8",
     "js-yaml": "4.1.0",
-    "npx": "10.2.2",
+    "npx": "^10.2.2",
     "parse-domain": "7.0.1",
     "source-map-support": "^0.5.21",
     "string-hash": "1.1.3",

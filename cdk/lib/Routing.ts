@@ -12,7 +12,9 @@ type RoutingProps = {
     vpc: ec2.Vpc,
     albSG?: ec2.SecurityGroup
     elbType: elbTypeEnum | void,
-    proxyDomains: proxyDomain[]
+    proxyDomains: proxyDomain[],
+    externalPrivateSubnetIds?: string,
+    createVpc: string,
 }
 export class RoutingConstruct extends Construct
 {
@@ -25,6 +27,17 @@ export class RoutingConstruct extends Construct
         const stackName = Stack.of( this ).stackName
 
         let domainsList: proxyDomain[] = props.proxyDomains
+
+        let subnetsObj
+        if ( props.createVpc.toLocaleLowerCase() === "false" )
+        {
+            //get subnets in cdk from subnet ids
+            const subnetIds: string[] = props.externalPrivateSubnetIds!.slice( 1, -1 ).split( "," ).map( ( s: string ) => s.trim() )  // ['subnet-0507c060b1c646a4e', 'subnet-0317c124a05351855']
+            subnetsObj = subnetIds.map( ( subnet: string ) =>
+            {
+                return ec2.Subnet.fromSubnetId( this, `${ stackName }-${ subnet }`, subnet )
+            } )
+        }
 
         // Create Private Route 53 Zones        
         domainsList = domainsList.map( ( domain ) =>
@@ -73,7 +86,7 @@ export class RoutingConstruct extends Construct
             // SSL certificate for the domain 
             const cert = new aws_cert.Certificate(
                 this,
-                `${ stackName }-certificate-${ crt.CERT_DOMAIN}`,
+                `${ stackName }-certificate-${ crt.CERT_DOMAIN }`,
                 {
                     domainName: `*.${ crt.CERT_DOMAIN }`, //TODO -  use wild card or fqdn domain for cert
                     validation: aws_cert.CertificateValidation.fromDns(
@@ -103,7 +116,8 @@ export class RoutingConstruct extends Construct
                     vpc: props.vpc,
                     vpcSubnets: {
                         onePerAz: true,
-                        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
+                        subnetType: props.createVpc.toLocaleLowerCase() === "true" ? ec2.SubnetType.PRIVATE_ISOLATED: undefined,
+                        subnets: props.createVpc.toLocaleLowerCase() === "false"? subnetsObj: undefined
                     },
                     internetFacing: false,
                     crossZoneEnabled: true,
@@ -163,7 +177,8 @@ export class RoutingConstruct extends Construct
                     vpc: props.vpc,
                     vpcSubnets: {
                         onePerAz: true,
-                        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
+                        subnetType: props.createVpc.toLocaleLowerCase() === "true" ? ec2.SubnetType.PRIVATE_ISOLATED: undefined,
+                        subnets: props.createVpc.toLocaleLowerCase() === "false"? subnetsObj: undefined
                     },
                     securityGroup: props.albSG,
                     internetFacing: false,
