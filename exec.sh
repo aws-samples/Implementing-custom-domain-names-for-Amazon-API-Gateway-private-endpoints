@@ -261,7 +261,7 @@ if [ "${execution_tool}" == "cdk" ]; then
 
 	#install packages
 	echo "Installing Node.js Packages"
-	npm install
+	npm install --quiet
 
 	# Check for bootstrap
 	if ! aws cloudformation describe-stacks --stack-name CDKToolkit >/dev/null 2>&1; then

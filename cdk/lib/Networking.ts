@@ -53,7 +53,7 @@ export class NetworkingConstruct extends Construct
 
         this.privateSubnets = vpc.selectSubnets( { subnetType: ec2.SubnetType.PRIVATE_ISOLATED } ).subnets;
 
-        const defaultSG = ec2.SecurityGroup.fromSecurityGroupId( this, `${ stackName }-default-sg`, vpc.vpcDefaultSecurityGroup )
+        // const defaultSG = ec2.SecurityGroup.fromSecurityGroupId( this, `${ stackName }-default-sg`, vpc.vpcDefaultSecurityGroup )
 
         // SG connected to Fargate Service
         this.fgSG = new ec2.SecurityGroup( this, `${ stackName }-security-group-fg`, {
@@ -148,11 +148,11 @@ export class NetworkingConstruct extends Construct
         } )
         cdk.Tags.of( endpointSG ).add( 'Name', 'interface-endpoint-sg' );
 
-        endpointSG.addIngressRule(
-            ec2.Peer.ipv4( vpc.vpcCidrBlock ),
-            ec2.Port.tcp( 443 ),
-            'Allow 443 traffic only from local CIDR'
-        )
+        // endpointSG.addIngressRule(
+        //     ec2.Peer.ipv4( vpc.vpcCidrBlock ),
+        //     ec2.Port.tcp( 443 ),
+        //     'Allow 443 traffic only from local CIDR'
+        // )
 
         this.fgSG.connections.allowTo( new ec2.Connections( {
             securityGroups: [ endpointSG ]
@@ -164,7 +164,10 @@ export class NetworkingConstruct extends Construct
         this.apiGatewayVPCInterfaceEndpoint = new ec2.InterfaceVpcEndpoint( this, `${ stackName }-api-gateway-interface-endpoint`, {
             vpc: vpc,
             service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY, // new ec2.InterfaceVpcEndpointService( `com.amazonaws.${ Stack.of( this ).region }.execute-api` ),            
-            securityGroups: [ endpointSG, defaultSG ]
+            securityGroups: [ endpointSG, 
+                // defaultSG 
+            ],
+            privateDnsEnabled: false
         } )
 
         // console.log(`this.apiGatewayVPCInterfaceEndpoint.vpcEndpointDnsEntries---> ${JSON.stringify(this.apiGatewayVPCInterfaceEndpoint.vpcEndpointDnsEntries)}`);
@@ -173,22 +176,40 @@ export class NetworkingConstruct extends Construct
         new ec2.InterfaceVpcEndpoint( this, `${ stackName }-logs-interface-endpoint`, {
             vpc: vpc,
             service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS, // new ec2.InterfaceVpcEndpointService( `com.amazonaws.${ Stack.of( this ).region }.logs`),            
-            securityGroups: [ endpointSG, defaultSG ]
+            securityGroups: [ endpointSG, 
+                // defaultSG 
+            ],
+            privateDnsEnabled: true
         } );
 
         // Create Interface Endpoint for -ecr-api-
         new ec2.InterfaceVpcEndpoint( this, `${ stackName }-ecr-api-interface-endpoint`, {
             vpc: vpc,
             service: ec2.InterfaceVpcEndpointAwsService.ECR, //new ec2.InterfaceVpcEndpointService( `com.amazonaws.${ Stack.of( this ).region }.ecr.api`),            
-            securityGroups: [ endpointSG, defaultSG ]
+            securityGroups: [ endpointSG, 
+                // defaultSG 
+            ],
+            privateDnsEnabled: true
         } );
 
         // Create Interface Endpoint for ecr-dkr
         const ecrDkrVPCInterfaceEndpoint = new ec2.InterfaceVpcEndpoint( this, `${ stackName }-ecr-dkr-interface-endpoint`, {
             vpc: vpc,
             service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER, //  new ec2.InterfaceVpcEndpointService( `com.amazonaws.${ Stack.of( this ).region }.ecr.dkr`),            
-            securityGroups: [ endpointSG, defaultSG ]
+            securityGroups: [ endpointSG, 
+                // defaultSG 
+            ],
+            privateDnsEnabled: true
         } );
+
+
+        // Create Interface Endpoint for S3
+        // const S3VPCInterfaceEndpoint = new ec2.InterfaceVpcEndpoint( this, `${ stackName }-s3-interface-endpoint`, {
+        //     vpc: vpc,
+        //     service: ec2.InterfaceVpcEndpointAwsService.S3, 
+        //     securityGroups: [ endpointSG, defaultSG ],            
+        // } );
+
 
         // Create Interface Endpoint for S3        
         const s3Gateway = new ec2.GatewayVpcEndpoint( this, `${ stackName }-s3-gateway-endpoint`, {

@@ -21,34 +21,24 @@ if [ $# -lt 1 ]; then
 	echo "$USAGE"
 else
 	# Set Execution values from Args
-	while [ $# -gt 0 ]; do
-		case "${1}" in
-		--private_api_id) # Private API Id
-			API_ID="${2}"
-			;;
-		--private_api_stage_name) # API Stage
-			API_STAGE_NAME="${2}"
-			;;
-		--aws_profile)
-			AWS_PROFILE="${2}"
-			;;
-		--aws_region)
-			AWS_REGION="${2}"
-			;;
-		--output_file_path) # Optional outputs file path, default is -/outputs/outputs.json
-			OUTPUT_FILE_PATH="${2}"
-			;;
-		\?) # Invalid option
-			echo "Invalid option ${1} ${2} passed."
-			echo "$USAGE"
-            exit 1
-			;;
-		esac
-		shift
-	done
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --private_api_id) PRIVATE_API_ID="$2"; shift 2;;
+    --private_api_stage_name) PRIVATE_API_STAGE_NAME="$2"; shift 2;;
+    --aws_profile) AWS_PROFILE="$2"; shift 2;;
+    --aws_region) AWS_REGION="$2"; shift 2;;
+    --output_file_path) OUTPUT_FILE_PATH="$2"; shift 2;;
+    *) echo "Unknown parameter passed: $1"; shift 1;;
+  esac
+done
 fi
-
 OUTPUT_FILE_PATH="${OUTPUT_FILE_PATH:=$DEFAULT_OUTPUT_FILE_PATH}"
+# echo "Private API ID: $PRIVATE_API_ID"
+# echo "Private API Stage Name: $PRIVATE_API_STAGE_NAME"
+# echo "AWS Profile: $AWS_PROFILE"
+# echo "AWS Region: $AWS_REGION"
+
+echo "Output File Path: $OUTPUT_FILE_PATH"
 
 function set_aws_credentials() {
 	PS3="Select AWS authentication mechanism: "
@@ -95,23 +85,23 @@ if ! aws sts get-caller-identity; then
 	set_aws_credentials
 fi
 
-POLICY_STMT=$(jq .API_RESOURCE_POLICY_MAPPING."${API_ID}" "$OUTPUT_FILE_PATH" | jq -c . | jq tojson) || POLICY_STMT=""
+POLICY_STMT=$(jq .API_RESOURCE_POLICY_MAPPING."${PRIVATE_API_ID}" "$OUTPUT_FILE_PATH" | jq -c . | jq tojson) || POLICY_STMT=""
 
 if [ -z "$POLICY_STMT" ]; then
-	echo "Either provided private api id (${API_ID}) is not correct or there is an error parsing the outputs file from location $OUTPUT_FILE_PATH "
+	echo "Either provided private api id (${PRIVATE_API_ID}) is not correct or there is an error parsing the outputs file from location $OUTPUT_FILE_PATH "
 	exit 1
 else
 	POLICY="[{\"op\": \"replace\", \"path\": \"/policy\", \"value\": ${POLICY_STMT} }]"
 
-	echo -e "\nUpdating Resource Policy on Private API with Id ${API_ID} \n"
+	echo -e "\nUpdating Resource Policy on Private API with Id ${PRIVATE_API_ID} \n"
 	aws apigateway update-rest-api \
-		--rest-api-id "$API_ID" \
+		--rest-api-id "$PRIVATE_API_ID" \
 		--patch-operations "$POLICY"
 
-	echo -e "\nDeploying Private API with Id ${API_ID} \n"
+	echo -e "\nDeploying Private API with Id ${PRIVATE_API_ID} \n"
 	aws apigateway create-deployment \
-		--rest-api-id "$API_ID" \
-		--stage-name "$API_STAGE_NAME"
+		--rest-api-id "$PRIVATE_API_ID" \
+		--stage-name "$PRIVATE_API_STAGE_NAME"
 fi
 
 exit 0

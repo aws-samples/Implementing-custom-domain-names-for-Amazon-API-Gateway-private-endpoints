@@ -27,7 +27,6 @@ type ProxyServiceStackProps = {
     elbType: elbTypeEnum,
     createVpc: string,
     vpcCidr?: string,
-    base64EncodedNginxConf: string
     externalVpcId?: string
     externalPrivateSubnetIds?: string
     externalAlbSgId?: string
@@ -116,17 +115,17 @@ export class ProxyServiceStack extends Stack
 
 
             const customResourceLambda = new NodejsFunction(
-              this,
-              `${stackName}-CustomResource-Fn`,
-              {
-                entry: Path.join(__dirname, "ExistResourceCheckCR.ts"),
-                functionName: `${stackName}-cr-get-vpc-endpoints`,
-                runtime: lambda.Runtime.NODEJS_18_X,
-                timeout: Duration.minutes(5),
-                bundling: {
-                  externalModules: ["@aws-sdk/client-ec2"],
-                },
-              }
+                this,
+                `${ stackName }-CustomResource-Fn`,
+                {
+                    entry: Path.join( __dirname, "CRExistResourceCheck.ts" ),
+                    functionName: `${ stackName }-cr-get-vpc-endpoints`,
+                    runtime: lambda.Runtime.NODEJS_18_X,
+                    timeout: Duration.minutes( 5 ),
+                    bundling: {
+                        externalModules: [ "@aws-sdk/client-ec2" ],
+                    },
+                }
             );
 
             const lambdaPolicy = new PolicyStatement( {
@@ -145,18 +144,18 @@ export class ProxyServiceStack extends Stack
 
             // Create a custom resource provider which wraps around the lambda above
             const customResourceProvider = new cr.Provider(
-              this,
-              `${stackName}-CRProvider`,
-              {
-                onEventHandler: customResourceLambda,
-                logRetention: logs.RetentionDays.FIVE_DAYS,
-                // totalTimeout: Duration.minutes(5),
+                this,
+                `${ stackName }-CRProvider`,
+                {
+                    onEventHandler: customResourceLambda,
+                    logRetention: logs.RetentionDays.FIVE_DAYS,
+                    // totalTimeout: Duration.minutes(5),
 
-              }
+                }
             );
 
-           
-            
+
+
             const objCustomResource = new cdk.CustomResource(
                 this,
                 `CustomResourceCreateVPCEndpoints`,
@@ -164,7 +163,7 @@ export class ProxyServiceStack extends Stack
                     resourceType: "Custom::CheckAPIGatewayVPCEndpoint",
                     serviceToken: customResourceProvider.serviceToken,
                     properties: {
-                        vpcId: props.externalVpcId,                        
+                        vpcId: props.externalVpcId,
                         externalPrivateSubnetIds: props.externalPrivateSubnetIds ||
                             this._error(
                                 "List of EXTERNAL_PRIVATE_SUBNETS_ID are required when CREATE_VPC is false. Check ReadMe.md for detailed instructions"
@@ -173,9 +172,9 @@ export class ProxyServiceStack extends Stack
                     },
 
                 }
-            )           
+            )
 
-               
+
             apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt( 'executeAPIVpcEndpointId' ).toString();
         }
 
@@ -191,14 +190,15 @@ export class ProxyServiceStack extends Stack
 
         new FargateServiceConstruct( this, `${ stackName }-fargate-service`, {
             vpc: vpc,
+            executeApiVpceId: apiGatewayVPCInterfaceEndpointId,
             elbType: props.elbType!,
             targetGroup: routingObject.targetGroup,
             ecsPrivateSG: fgSg,
-            base64EncodedNginxConf: props.base64EncodedNginxConf,
+            proxyDomains: props.proxyDomains,
             taskImage: props.taskImage,
             taskScaleMin: props.taskScaleMin,
             taskScaleMax: props.taskScaleMax,
-            taskScaleCpuPercentage:props.taskScaleCpuPercentage
+            taskScaleCpuPercentage: props.taskScaleCpuPercentage,
         } )
 
         new CfnOutput( this, 'vpc_id', { value: vpc.vpcId } )

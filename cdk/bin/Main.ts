@@ -64,7 +64,8 @@ const Main = () =>
     hasPublicSubnets,
     taskScaleMin,
     taskScaleMax,
-    taskScaleCpuPercentage
+    taskScaleCpuPercentage,
+    
   } );
   
   cdk.Tags.of( mainStack ).add( 'App', appName );

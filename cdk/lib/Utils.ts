@@ -17,8 +17,6 @@ function checkApiGatewayURLPattern ( url: string )
 
 export const GenerateNginxConfig = ( domainsList: proxyDomain[] ): string =>
 {
-    const executeApiVpceDNSName1= 'vpce-042a6dbaaeebd1bde-u7wfdgs6.execute-api.us-west-2.vpce.amazonaws.com'
-    
     let conf_file_str = `user  nginx;
 worker_processes  auto;
 
@@ -73,7 +71,7 @@ http {
           proxy_set_header Referer  $server_name;
           proxy_set_header x-apigw-api-id ${ apiId };
           set $apiUrl ${ privateAPIurl };
-          proxy_pass $apiUrl;
+          proxy_pass ${ privateAPIurl };
           
       }
     }

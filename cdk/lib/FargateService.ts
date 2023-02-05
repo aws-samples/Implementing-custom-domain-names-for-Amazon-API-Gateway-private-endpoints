@@ -9,6 +9,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cr from 'aws-cdk-lib/custom-resources'
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs'
 
 import { ApplicationTargetGroup, NetworkTargetGroup } from 'aws-cdk-lib/aws-elasticloadbalancingv2'
@@ -83,9 +84,12 @@ export class FargateServiceConstruct extends Construct
         )
 
         const customResourceLambda = new NodejsFunction( this, `${ stackName }-crFn-interfaceDNS`, {
-            entry: Path.join( __dirname, 'CustomResource.ts' ),
+            entry: Path.join( __dirname, 'CRGetVPCEndpointDNS.ts' ),
             functionName: `${ stackName }-cr-get-vpc-endpoints-dns`,
-            // runtime: lambda.Runtime.NODEJS_16_X,
+            runtime: Runtime.NODEJS_18_X,
+            bundling: {
+                externalModules: [ "@aws-sdk/client-ec2" ],
+            },
         } )
 
         const lambdaPolicy = new PolicyStatement( {
@@ -104,20 +108,20 @@ export class FargateServiceConstruct extends Construct
 
         // Create a new custom resource consumer
         const objCustomResource = new cdk.CustomResource(
-          this,
-          "CustomResourceGetVPCEndpointsDns",
-          {
-            resourceType: "Custom::CheckAPIGatewayVPCEndpointDns",
-            serviceToken: customResourceProvider.serviceToken,
-            properties: {
-              VpcId: props.vpc.vpcId,
-              Dummy: 0,
-            },
-          }
+            this,
+            "CustomResourceGetVPCEndpointsDns",
+            {
+                resourceType: "Custom::CheckAPIGatewayVPCEndpointDns",
+                serviceToken: customResourceProvider.serviceToken,
+                properties: {
+                    VpcId: props.vpc.vpcId,
+                    Dummy: 3,
+                },
+            }
         );
-        
-        const apiGatewayVPCInterfaceEndpointDNSName = objCustomResource.getAtt('Result').toString()
-        
+
+        const apiGatewayVPCInterfaceEndpointDNSName = objCustomResource.getAtt( 'Result' ).toString()
+
         // The docker container including the image to use        
         const fgContainer = new ecs.ContainerDefinition(
             this,
@@ -148,7 +152,33 @@ export class FargateServiceConstruct extends Construct
             }
         );
 
-        fgContainer.node.addDependency(objCustomResource);
+        // const fgContainer = new ecs.ContainerDefinition( this,
+        //     `${ stackName }-container-def`, {
+        //     image: ecs.ContainerImage.fromAsset( "./image", {
+        //         buildArgs: {
+        //             TASK_IMAGE: props.taskImage,
+        //         },
+        //         platform: ecr_assets.Platform.LINUX_AMD64,
+        //     } ),
+        //     taskDefinition: taskDefinition,
+        //     logging: ecs.LogDriver.awsLogs( {
+        //         streamPrefix: `${ stackName }-fargate-service`,
+        //         logRetention: logs.RetentionDays.ONE_MONTH,
+        //     } ),
+        //     environment: {
+        //         NGINX_CONFIG: btoa( GenerateNginxConfig( props.proxyDomains ) ), //base 64 encoded Nginx config file 
+        //         API_GATEWAY_VPC_DNS: apiGatewayVPCInterfaceEndpointDNSName
+        //     },
+
+        // } )
+
+        // // Add a port mapping
+        // fgContainer.addPortMappings( {
+        //     containerPort: 80,
+        //     protocol: ecs.Protocol.TCP,
+        // } );
+
+        fgContainer.node.addDependency( objCustomResource );
 
 
         // The ECS Service used for deploying tasks 
