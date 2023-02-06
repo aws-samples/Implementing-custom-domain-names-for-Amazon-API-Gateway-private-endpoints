@@ -38,7 +38,7 @@ OUTPUT_FILE_PATH="${OUTPUT_FILE_PATH:=$DEFAULT_OUTPUT_FILE_PATH}"
 # echo "AWS Profile: $AWS_PROFILE"
 # echo "AWS Region: $AWS_REGION"
 
-echo "Output File Path: $OUTPUT_FILE_PATH"
+# echo "Output File Path: $OUTPUT_FILE_PATH"
 
 function set_aws_credentials() {
 	PS3="Select AWS authentication mechanism: "

@@ -16,7 +16,7 @@ const interfaceEndpoints = [
   'ecr.api',
   'logs',
   'ecr.dkr',
-  // 's3'
+  's3'
 ]
 
 
@@ -35,7 +35,12 @@ export const handler = async ( event: CloudFormationCustomResourceEvent, context
   {
     const {
       RequestType,
-      ResourceProperties: { vpcId, externalPrivateSubnetIds },
+      ResourceProperties: { vpcId,
+        externalPrivateSubnetIds,
+        ExternalFargateSg,
+        ExternalEndpointSg
+
+      },
     } = event;
 
     const physicalResourceID =
@@ -44,15 +49,17 @@ export const handler = async ( event: CloudFormationCustomResourceEvent, context
         : undefined;
 
 
-    const subnetIds = externalPrivateSubnetIds.slice( 1, -1 ).split( "," ).map( ( s: string ) => s.trim() )
+    // const subnetIds = externalPrivateSubnetIds.slice( 1, -1 ).split( "," ).map( ( s: string ) => s.trim() )
+    const subnetIds = JSON.parse( externalPrivateSubnetIds )
 
     console.log( `subnetIds->-->${ subnetIds }` );
 
     if ( ( event.RequestType === 'Create' ) || ( event.RequestType === 'Update' ) )
     {
-      endpointsCreated = await handleCreateOrUpdate( vpcId, subnetIds )
+      endpointsCreated = await handleCreateOrUpdate( vpcId, subnetIds, ExternalEndpointSg )
       executeAPIVpcEndpointId = endpointsCreated[ 'execute-api' ].endpointId
 
+      console.log( `executeAPIVpcEndpointId--->${ executeAPIVpcEndpointId }` )
 
       // const endpointsCreatedIds = Object.entries( endpointsCreated ).filter( ( [ key, value ] ) => value.isCreated ).map( ( [ key, value ] ) => value.endpointId )
 
@@ -97,8 +104,7 @@ export const handler = async ( event: CloudFormationCustomResourceEvent, context
         await sleep( 5000 );
       }
     }
-
-    return {
+    const returnObject = {
       Status: 'SUCCESS',
       Reason: 'Handler completed successfully.',
       PhysicalResourceId: physicalResourceIdSend,
@@ -106,6 +112,11 @@ export const handler = async ( event: CloudFormationCustomResourceEvent, context
         executeAPIVpcEndpointId: executeAPIVpcEndpointId
       },
     }
+    
+    console.log(`returnObject---> ${JSON.stringify(returnObject)}`)
+
+    return returnObject
+
   } catch ( error )
   {
     console.error( error );
@@ -121,7 +132,7 @@ export const handler = async ( event: CloudFormationCustomResourceEvent, context
 
 }
 
-const handleCreateOrUpdate = async ( vpcId: string, externalPrivateSubnetIds: string[] ): Promise<IEndpointsCreated> =>
+const handleCreateOrUpdate = async ( vpcId: string, externalPrivateSubnetIds: string[], externalEndpointSg: string ): Promise<IEndpointsCreated> =>
 {
 
   let endpointId: string | undefined = ''
@@ -151,9 +162,9 @@ const handleCreateOrUpdate = async ( vpcId: string, externalPrivateSubnetIds: st
 
       if ( interfaceEndpoint === 's3' && endpointFound.VpcEndpointType === "Interface" )
       {
-        console.log( `S3 endpoint gateway not found 333333---> ${ JSON.stringify( interfaceEndpoint ) }` )
+        console.log( `S3 endpoint gateway not found , so creating---> ${ JSON.stringify( interfaceEndpoint ) }` )
         allEndpoints[ interfaceEndpoint ] = {
-          endpointId: await createEndpoint( vpcId, interfaceEndpoint, 'Gateway', externalPrivateSubnetIds ),
+          endpointId: await createEndpoint( vpcId, interfaceEndpoint, 'Gateway', externalPrivateSubnetIds, externalEndpointSg ),
           isCreated: true
         }
 
@@ -165,16 +176,13 @@ const handleCreateOrUpdate = async ( vpcId: string, externalPrivateSubnetIds: st
           endpointId: endpointFound.VpcEndpointId!,
           isCreated: false
         }
-
       }
-
-
     }
     else
     {
       console.log( `endpoint Not Found 7777---> ${ interfaceEndpoint }` );
       allEndpoints[ interfaceEndpoint ] = {
-        endpointId: await createEndpoint( vpcId, interfaceEndpoint, interfaceEndpoint === 's3' ? 'Gateway' : 'Interface', externalPrivateSubnetIds ),
+        endpointId: await createEndpoint( vpcId, interfaceEndpoint, interfaceEndpoint === 's3' ? 'Gateway' : 'Interface', externalPrivateSubnetIds, externalEndpointSg ),
         isCreated: true
       }
     }
@@ -193,28 +201,24 @@ const createEndpoint = async (
   vpcId: string,
   endpoint: string,
   type: "Interface" | "Gateway",
-  externalPrivateSubnetIds: string[]
-
+  externalPrivateSubnetIds: string[],
+  externalEndpointSg: string
 ) =>
 {
-  console.log( "creating Endpoint", endpoint, type );
-
-  // let privateRoutes: ec2.RouteTable | undefined;
-  // let privateSubnets: ec2.Subnet[] | undefined;    
+  console.log( "creating Endpoint", endpoint, type )
 
   // create VPCEndpoint
   const command = new ec2.CreateVpcEndpointCommand( {
     VpcId: vpcId,
     ServiceName: `com.amazonaws.${ region }.${ endpoint }`,
     VpcEndpointType: type,
-    // PrivateDnsEnabled: endpoint==='execute-api' ? true : false,
+    PrivateDnsEnabled: type === 'Interface' ? ( endpoint === 'execute-api' ? false : true ) : false,
     RouteTableIds: type === "Gateway" ? await getPrivateRouteTableIds( vpcId, externalPrivateSubnetIds ) : undefined,
     SubnetIds: type === "Interface" ? externalPrivateSubnetIds : undefined,
+    SecurityGroupIds: type === "Interface" ? [ externalEndpointSg ] : undefined
   } );
 
   const endpointResponse = await client.send( command )
-  // console.log( "endpointResponse", endpointResponse )
-  // endpointsCreated[ endpoint ] = endpointResponse.VpcEndpoint?.VpcEndpointId!
 
   return endpointResponse.VpcEndpoint?.VpcEndpointId!;
 }
@@ -234,8 +238,7 @@ const getPrivateRouteTableIds = async ( vpcId: string, externalPrivateSubnetIds:
     ],
   } );
 
-  const routeTablesResponse: ec2.DescribeRouteTablesCommandOutput =
-    await client.send( commandRouteTable )
+  const routeTablesResponse: ec2.DescribeRouteTablesCommandOutput = await client.send( commandRouteTable )
 
   return routeTablesResponse.RouteTables?.map( route => route.RouteTableId! )
 }

@@ -32,7 +32,9 @@ export class RoutingConstruct extends Construct
         if ( props.createVpc.toLocaleLowerCase() === "false" )
         {
             //get subnets in cdk from subnet ids
-            const subnetIds: string[] = props.externalPrivateSubnetIds!.slice( 1, -1 ).split( "," ).map( ( s: string ) => s.trim() )  // ['subnet-0507c060b1c646a4e', 'subnet-0317c124a05351855']
+            // const subnetIds: string[] = props.externalPrivateSubnetIds!.slice( 1, -1 ).split( "," ).map( ( s: string ) => s.trim() )  // ['subnet-0507c060b1c646a4e', 'subnet-0317c124a05351855']
+            const subnetIds: string[] =JSON.parse( props.externalPrivateSubnetIds! )
+
             subnetsObj = subnetIds.map( ( subnet: string ) =>
             {
                 return ec2.Subnet.fromSubnetId( this, `${ stackName }-${ subnet }`, subnet )
@@ -102,10 +104,6 @@ export class RoutingConstruct extends Construct
             return cert as aws_cert.Certificate
         } )
 
-
-
-
-
         if ( props.elbType === elbTypeEnum.NLB )
         {
             // Network load balancer
@@ -117,7 +115,8 @@ export class RoutingConstruct extends Construct
                     vpcSubnets: {
                         onePerAz: true,
                         subnetType: props.createVpc.toLocaleLowerCase() === "true" ? ec2.SubnetType.PRIVATE_ISOLATED: undefined,
-                        subnets: props.createVpc.toLocaleLowerCase() === "false"? subnetsObj: undefined
+                        subnets: props.createVpc.toLocaleLowerCase() === "false"? subnetsObj : undefined
+                        
                     },
                     internetFacing: false,
                     crossZoneEnabled: true,

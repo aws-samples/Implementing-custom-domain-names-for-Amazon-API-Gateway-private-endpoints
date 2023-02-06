@@ -1,26 +1,17 @@
 import * as Path from 'path'
-
-import { CfnOutput, CfnWaitCondition, CfnWaitConditionHandle, Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-
+import { CfnOutput, Duration, Stack, StackProps } from 'aws-cdk-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as cr from 'aws-cdk-lib/custom-resources'
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs'
-
-
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { proxyDomain, elbTypeEnum, } from '../bin/Main';
 import { FargateServiceConstruct } from './FargateService';
 import { NetworkingConstruct } from './Networking';
 import { RoutingConstruct } from './Routing';
-
-import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { AwsCustomResource, AwsCustomResourcePolicy, AwsSdkCall, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
-import { RetentionDays } from 'aws-cdk-lib/aws-logs';
-
-
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam'
 
 type ProxyServiceStackProps = {
     proxyDomains: proxyDomain[],
@@ -31,6 +22,7 @@ type ProxyServiceStackProps = {
     externalPrivateSubnetIds?: string
     externalAlbSgId?: string
     externalFargateSgId?: string,
+    externalEndpointSgId?: string,
     taskImage: string,
     hasPublicSubnets: string,
     taskScaleMin: number,
@@ -48,13 +40,18 @@ export class ProxyServiceStack extends Stack
         let fgSg: ec2.SecurityGroup
         let albSg: ec2.SecurityGroup | undefined
         let apiGatewayVPCInterfaceEndpointId: string = ''
+        let objCustomResource
 
-        if ( props.elbType === 'ALB' || props.elbType === 'NLB' ) { } else
-        {
-            this._error(
-                `ELB_TYPE should be ALB or NLB not ${ props.elbType }`
-            );
-        }
+        // if ( props.elbType === 'ALB' || props.elbType === 'NLB' ) { } else
+        // {
+        //     this._error(
+        //         `ELB_TYPE should be ALB or NLB not ${ props.elbType }`
+        //     );
+        // }
+
+        props.elbType !== 'ALB' && props.elbType !== 'NLB'
+            ? this._error( `ELB_TYPE should be ALB or NLB not ${ props.elbType }` )
+            : undefined;
 
         if ( props.createVpc.toLocaleLowerCase() === "true" )
         {
@@ -81,16 +78,16 @@ export class ProxyServiceStack extends Stack
             console.log( `CREATE_VPC -> FALSE` );
             const vpcId =
                 props.externalVpcId ||
-                this._error( "EXTERNAL_VPC_ID is required when CREATE_VPC is false. Check ReadMe.md for detailed instructions" );
+                this._error( "EXTERNAL_VPC_ID value is required when CREATE_VPC is false. Check ReadMe.md for detailed instructions" );
             const fgSgId =
                 props.externalFargateSgId ||
                 this._error(
-                    "Fargate Security Group ID EXTERNAL_FARGATE_SG_ID is required when CREATE_VPC is false. Check ReadMe.md for detailed instructions"
+                    "Fargate Security Group ID EXTERNAL_FARGATE_SG_ID value is required when CREATE_VPC is false. Check ReadMe.md for detailed instructions, and Inbound and Outbound security group rules."
                 );
             const albSgId: string =
                 props.externalAlbSgId ||
                 this._error(
-                    "Application load balancer Security Group EXTERNAL_ALB_SG_ID is required when CREATE_VPC is false and Load Balancer is ALB. Check ReadMe.md for detailed instructions"
+                    "Application load balancer Security Group EXTERNAL_ALB_SG_ID value is required when CREATE_VPC is false and Load Balancer is ALB. Check ReadMe.md for detailed instructions, and Inbound and Outbound security group rules."
                 );
 
             vpc = ec2.Vpc.fromLookup( this, `${ stackName }-vpc`, {
@@ -156,7 +153,7 @@ export class ProxyServiceStack extends Stack
 
 
 
-            const objCustomResource = new cdk.CustomResource(
+            objCustomResource = new cdk.CustomResource(
                 this,
                 `CustomResourceCreateVPCEndpoints`,
                 {
@@ -166,15 +163,17 @@ export class ProxyServiceStack extends Stack
                         vpcId: props.externalVpcId,
                         externalPrivateSubnetIds: props.externalPrivateSubnetIds ||
                             this._error(
-                                "List of EXTERNAL_PRIVATE_SUBNETS_ID are required when CREATE_VPC is false. Check ReadMe.md for detailed instructions"
+                                "List of EXTERNAL_PRIVATE_SUBNETS_ID are required in format [\"subnet-010101010101\", \"subnet-202020202021\"], when CREATE_VPC is false. Check ReadMe.md for detailed instructions."
                             ),
-                        Dummy: 2,
+                        Dummy: 0,
+                        ExternalFargateSg: fgSgId,
+                        ExternalEndpointSg: props.externalEndpointSgId ||
+                            this._error(
+                                "EXTERNAL_ENDPOINT_SG_ID value is required when CREATE_VPC is false. Check ReadMe.md for detailed instructions, and Inbound and Outbound security group rules." )
                     },
 
                 }
-            )
-
-
+            )            
             apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt( 'executeAPIVpcEndpointId' ).toString();
         }
 
@@ -188,7 +187,9 @@ export class ProxyServiceStack extends Stack
             externalPrivateSubnetIds: props.createVpc === "false" ? props.externalPrivateSubnetIds : undefined
         } )
 
-        new FargateServiceConstruct( this, `${ stackName }-fargate-service`, {
+        
+
+        const FargateServiceConstructObj = new FargateServiceConstruct( this, `${ stackName }-fargate-service`, {
             vpc: vpc,
             executeApiVpceId: apiGatewayVPCInterfaceEndpointId,
             elbType: props.elbType!,
@@ -200,6 +201,11 @@ export class ProxyServiceStack extends Stack
             taskScaleMax: props.taskScaleMax,
             taskScaleCpuPercentage: props.taskScaleCpuPercentage,
         } )
+
+        if(props.createVpc.toLocaleLowerCase() === "false" && objCustomResource ){
+
+            FargateServiceConstructObj.node.addDependency(objCustomResource)
+        }
 
         new CfnOutput( this, 'vpc_id', { value: vpc.vpcId } )
         new CfnOutput( this, 'elb-dns', { value: routingObject.elbDns } )

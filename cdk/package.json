@@ -11,6 +11,7 @@
     "cdk": "npx cdk"
   },
   "devDependencies": {
+    "@aws-sdk/client-ec2": "3.264.0",
     "@types/aws-lambda": "8.10.109",
     "@types/jest": "^27.5.2",
     "@types/node": "10.17.27",
@@ -21,8 +22,8 @@
     "ts-node": "^10.9.1",
     "typescript": "~3.9.7"
   },
-  "dependencies": {    
-    "@aws-sdk/client-route-53": "3.171.0",        
+  "dependencies": {
+    "@aws-sdk/client-route-53": "3.171.0",
     "@types/args": "5.0.0",
     "@types/extract-domain": "2.3.1",
     "@types/js-yaml": "4.0.5",

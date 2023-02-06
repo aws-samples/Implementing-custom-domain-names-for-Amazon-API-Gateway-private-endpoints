@@ -284,7 +284,7 @@ if [ "${execution_tool}" == "cdk" ]; then
 			PROXY_DOMAINS=$(ts-node pre-hook.ts --proxyFilePath="${PROXY_CONFIG_PATH}" | jq -c .)
 			export PROXY_DOMAINS
 
-			npx --yes cdk --profile "${AWS_PROFILE}" "${action}" ${cdk_args:-} ${downstream_args:-}
+			npx --yes cdk  --no-strict --profile "${AWS_PROFILE}" "${action}" ${cdk_args:-} ${downstream_args:-}
 
 			success=$?
 			if [ $success != 0 ]; then

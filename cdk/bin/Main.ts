@@ -29,6 +29,7 @@ const externalVpcId: string = process.env.EXTERNAL_VPC_ID || ''
 const externalPrivateSubnetIds: string = process.env.EXTERNAL_PRIVATE_SUBNETS_ID || ''
 const externalAlbSgId: string = process.env.EXTERNAL_ALB_SG_ID || ''
 const externalFargateSgId: string = process.env.EXTERNAL_FARGATE_SG_ID || ''
+const externalEndpointSgId: string = process.env.EXTERNAL_ENDPOINT_SG_ID || ''
 const taskImage: string = ( process.env.TASK_IMAGE || 'public.ecr.aws/nginx/nginx' ) + ":" + ( process.env.TASK_IMAGE_TAG || '1.23-alpine-perl' )
 const hasPublicSubnets: string = process.env.PUBLIC_SUBNETS || 'false'
 const taskScaleMin: number = Number(process.env.TASK_SCALE_MIN || '1')
@@ -60,6 +61,7 @@ const Main = () =>
     externalPrivateSubnetIds,
     externalAlbSgId,
     externalFargateSgId,
+    externalEndpointSgId,
     taskImage,
     hasPublicSubnets,
     taskScaleMin,
