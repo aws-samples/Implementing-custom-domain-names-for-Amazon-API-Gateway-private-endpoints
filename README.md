@@ -340,10 +340,11 @@ A security group with rules for your Application load balancer alb-sg, with the 
   - Interface endpoint for Logs (Private DNS Enabled)
   - Gateway endpoint for S3
 
-##### Security Groups
+#### Security Groups
+
 | Security Group | Ingress/Egress | Source/Destination | Protocol | Port |
 |:-:|:-:|:-:|:-:|:-:|
-| <a id=alb_sg />ALB[^alb] | Ingress | 0.0.0.0/0 | TCP | 443 |
+|<a id=alb_sg /> ALB[^alb] | Ingress | 0.0.0.0/0 | TCP | 443 |
 | ALB[^alb] | Egress | Fargate Security Group | TCP | 80 |
 | <a id=fg_sg />Fargate | Ingress | ELB Security Group **or** <br/>VIPC CIDR[^elb] | TCP | 80 |
 | Fargate | Egress | VPC Endpoint Security Group | TCP | 443 |
