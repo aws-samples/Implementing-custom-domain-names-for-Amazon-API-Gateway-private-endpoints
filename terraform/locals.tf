@@ -11,9 +11,9 @@ locals {
     for api in local.api_list :
     trimprefix(regex("\\..*$", api.CUSTOM_DOMAIN_URL), ".")
   ])
-  name_prefix     = length("${var.app_name}_${var.app_environment}") > 10 ? substr("${var.app_name}_${var.app_environment}", 0, 10) : "${var.app_name}_${var.app_environment}"
+  name_prefix     = trimsuffix(length("${var.app_name}-${var.app_environment}") > 10 ? substr("${var.app_name}-${var.app_environment}", 0, 10) : "${var.app_name}-${var.app_environment}", "-")
   service_name    = "${local.name_prefix}_nginx"
-  vpc_id          = var.create_vpc ? module.vpc[0].vpc_id : var.external_vpc_id
-  private_subnets = var.create_vpc ? module.vpc[0].private_subnets : var.external_private_subnets_id
+  vpc_id          = var.external_vpc_id == null ? module.vpc[0].vpc_id : var.external_vpc_id
+  private_subnets = var.external_vpc_id == null ? module.vpc[0].private_subnets : var.external_private_subnets_id
   alb_sg_id       = var.elb_type == "ALB" ? can(regex("^sg.*", var.external_alb_sg_id)) ? var.external_alb_sg_id : aws_security_group.alb[0].id : null
 }

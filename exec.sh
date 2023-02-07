@@ -30,6 +30,13 @@ optional args:
 src_dir="${PWD}"
 outputs_dir="${src_dir}/outputs"
 mkdir -p "${outputs_dir}"
+endpoints=(
+    "ecr.dkr"
+    "ecr.api"
+    "execute-api"
+    "logs"
+    "s3"
+)
 
 # Set Execution values from Args
 while [ $# -gt 0 ]; do
@@ -128,9 +135,9 @@ EOF
 		esac
 		;;
 	--*) # Invalid option
-		echo "Passing unrecognized argument to execution tool ${1} ${2}"
+		echo "Passing unrecognized argument to execution tool ${1} ${2:-}"
 		downstream_args=${downstream_args:-}
-		downstream_args+=" ${1} ${2}"
+		downstream_args+=" ${1} ${2:-}"
 		;;
 	esac
 	shift
@@ -149,14 +156,16 @@ if [ -z "${action}" ]; then
 fi
 
 # Source Variables File
-var_file=${var_file:-"${src_dir}/config/vars.yaml"}
-var_file=$(readlink -f "${var_file}")
+default_var_file="${src_dir}/config/vars-template.yaml"
+var_file=${var_file:-./config/vars.yaml}
+var_file="${src_dir}/${var_file}"
 if ! [ -f "${var_file}" ]; then
 	cat <<EOF
 INFO: No --vars argument provided and no vars.yaml found.
-Place a valid vars.yaml file in ${src_dir}/config
+Place a valid vars.yaml file in ${PWD}/config
 A default vars file has been provided and will be used for this execution
 EOF
+	var_file="${default_var_file}"
 fi
 
 # Export variables from vars file
@@ -261,7 +270,7 @@ if [ "${execution_tool}" == "cdk" ]; then
 
 	#install packages
 	echo "Installing Node.js Packages"
-	npm install --quiet
+	npm install --silent
 
 	# Check for bootstrap
 	if ! aws cloudformation describe-stacks --stack-name CDKToolkit >/dev/null 2>&1; then
@@ -314,28 +323,48 @@ if [ "${execution_tool}" == "terraform" ]; then
 	case "${action}" in
 	plan | apply | destroy)
 		if [ ! -f "${src_dir}/config/proxy-config.yaml" ]; then
-			cat <<EOF
-ERROR: proxy-config.yaml is required in the config directory and is not present.
-Place a valid proxy-config.yaml file in: ${src_dir}
-A template file has been provided.
-EOF
+			cat <<-EOF
+			ERROR: proxy-config.yaml is required in the config directory and is not present.
+			Place a valid proxy-config.yaml file in: ${src_dir}
+			A template file has been provided.
+			EOF
 			exit 1
 		fi
-		pushd "${src_dir}/terraform" >/dev/null
-		# Collection of variables required by terraform
-		tfvars_file="${src_dir}/outputs/${APP_NAME}-${APP_ENVIRONMENT}.tfvars"
-		echo >"${tfvars_file}"
-		sed -E 's/^(.*VARIABLES:.*| *| *- *|.*---.*)//g;/^$/d;s/: */=/g;s/#.*$//g' "${var_file}" | while read -r line; do
-			if [[ $line =~ ^EXTERNAL_PRIVATE_SUBNETS_ID.? ]]; then
-				echo "${line}" | awk -F= '{print tolower($1)"="$2}' >>"${tfvars_file}"
-			elif [[ $line =~ ^PROXY_CONFIG_PATH.? ]]; then
-				echo "proxy_config_path=\"${PROXY_CONFIG_PATH}\"" >>"${tfvars_file}"
-			else
-				echo "${line}" | awk -F= '{print tolower($1)"=\""$2"\""}' >>"${tfvars_file}"
+		while IFS= read -r line
+		do
+			if [[ "${line}" =~ ^[-]*$ ]] || [[ "${line}" =~ ^(.*: ?)$ ]] || [[ "${line}" =~ ^.?:[" "]?['"'"'"]{2}.?$ ]]; then
+				continue
 			fi
-		done
+			k="TF_VAR_$(echo "${line}" | sed -e 's/^[ -]*//' | awk -F: '{print$1}' | tr '[:upper:]' '[:lower:]')"
+			v=$(echo "${line}" |  awk -F: '{print$2}' | sed -e 's/^[ -]*//;s/#.$//')
+			if [[ "${k}" =~ (TF_VAR_#) ]]; then
+				continue
+			fi
+			echo $k $v
+			eval "export $k=$v"
+		done < "${var_file}"
+		export TF_VAR_proxy_config_path="${PROXY_CONFIG_PATH}"
+		pushd "${src_dir}/terraform" >/dev/null
 		terraform init
-		terraform "${action}" --var-file="${tfvars_file}" ${tf_args:-} ${downstream_args:-}
+		
+		# Import existing VPC endpoints
+		# TF_VAR_external_vpc_id=${TF_VAR_external_vpc_id:-null}
+		# if ! [[ "${TF_VAR_external_vpc_id}" == "null" ]]; then
+		# 	echo "Checking for existing endpoints in ${TF_VAR_external_vpc_id}..."
+		# 	vpc_endpoints=$(aws ec2 describe-vpc-endpoints --query "VpcEndpoints[?VpcId=='${TF_VAR_external_vpc_id}'].{VpcEndpointId: VpcEndpointId, ServiceName: ServiceName}" --output=json) > /dev/null 2>&1
+		# 	for endpoint in "${endpoints[@]}"; do
+		# 		endpoint_id=$(echo $vpc_endpoints| jq -r '.[]|select(.ServiceName|test("^.*'${endpoint}'$")).VpcEndpointId')
+		# 		if [[ "${endpoint_id}" =~ ^vpce-[a-f0-9]{7,17}$ ]]; then
+		# 			if ! terraform state show 'aws_vpc_endpoint.this["'"${endpoint}"'"]' > /dev/null 2>&1; then
+		# 				echo "${endpoint} endpoint ${endpoint_id} discovered, importing..."
+		# 				terraform import 'aws_vpc_endpoint.this["'"${endpoint}"'"]' "${endpoint_id}"
+		# 			fi
+		# 		fi
+		# 	done
+		# fi
+
+		# Execute terraform action
+		terraform "${action}" ${tf_args:-} ${downstream_args:-}
 		popd >/dev/null
 		;;
 	*)
@@ -344,5 +373,3 @@ EOF
 		;;
 	esac
 fi
-
-exit 0
