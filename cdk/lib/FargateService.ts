@@ -115,7 +115,7 @@ export class FargateServiceConstruct extends Construct
                 serviceToken: customResourceProvider.serviceToken,
                 properties: {
                     VpcId: props.vpc.vpcId,
-                    Dummy: 3,
+                    Dummy: 0,
                 },
             }
         );
@@ -150,33 +150,7 @@ export class FargateServiceConstruct extends Construct
                     "echo $NGINX_CONFIG | base64 -d | sed -e \"s/API_GATEWAY_VPC_DNS_/${API_GATEWAY_VPC_DNS}/g\" > /etc/nginx/nginx.conf && nginx && tail -f /dev/null",
                 ],
             }
-        );
-
-        // const fgContainer = new ecs.ContainerDefinition( this,
-        //     `${ stackName }-container-def`, {
-        //     image: ecs.ContainerImage.fromAsset( "./image", {
-        //         buildArgs: {
-        //             TASK_IMAGE: props.taskImage,
-        //         },
-        //         platform: ecr_assets.Platform.LINUX_AMD64,
-        //     } ),
-        //     taskDefinition: taskDefinition,
-        //     logging: ecs.LogDriver.awsLogs( {
-        //         streamPrefix: `${ stackName }-fargate-service`,
-        //         logRetention: logs.RetentionDays.ONE_MONTH,
-        //     } ),
-        //     environment: {
-        //         NGINX_CONFIG: btoa( GenerateNginxConfig( props.proxyDomains ) ), //base 64 encoded Nginx config file 
-        //         API_GATEWAY_VPC_DNS: apiGatewayVPCInterfaceEndpointDNSName
-        //     },
-
-        // } )
-
-        // // Add a port mapping
-        // fgContainer.addPortMappings( {
-        //     containerPort: 80,
-        //     protocol: ecs.Protocol.TCP,
-        // } );
+        )
 
         fgContainer.node.addDependency( objCustomResource );
 
@@ -189,9 +163,9 @@ export class FargateServiceConstruct extends Construct
             desiredCount: 1,
             taskDefinition: taskDefinition,
             securityGroups: [ props.ecsPrivateSG ],
-            // circuitBreaker: {
-            //     rollback: true
-            // }
+            circuitBreaker: {
+                rollback: true
+            }
         } )
 
         //  service.attachToApplicationTargetGroup( props.albTG )

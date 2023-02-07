@@ -4,9 +4,8 @@ import { CloudFormationCustomResourceCreateEvent, CloudFormationCustomResourceEv
 const region = process.env.AWS_REGION;
 const client = new ec2.EC2Client( {} )
 export const handler = async ( event: CloudFormationCustomResourceEvent ) =>
-{
-  let apiGatewayVpcEndPointId = ''
-  let apiGatewayVpcDNSName = ''
+{  
+  let apiGatewayVpcDNSName: string | undefined = ''
   console.log( "event", event )
 
   try

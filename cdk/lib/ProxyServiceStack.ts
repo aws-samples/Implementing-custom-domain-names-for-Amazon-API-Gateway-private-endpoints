@@ -165,7 +165,7 @@ export class ProxyServiceStack extends Stack
                             this._error(
                                 "List of EXTERNAL_PRIVATE_SUBNETS_ID are required in format [\"subnet-010101010101\", \"subnet-202020202021\"], when CREATE_VPC is false. Check ReadMe.md for detailed instructions."
                             ),
-                        Dummy: 0,
+                        Dummy: 1,
                         ExternalFargateSg: fgSgId,
                         ExternalEndpointSg: props.externalEndpointSgId ||
                             this._error(

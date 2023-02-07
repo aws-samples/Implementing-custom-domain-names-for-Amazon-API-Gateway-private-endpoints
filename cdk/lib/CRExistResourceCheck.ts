@@ -171,6 +171,19 @@ const handleCreateOrUpdate = async ( vpcId: string, externalPrivateSubnetIds: st
       }
       else
       {
+
+        if(( interfaceEndpoint === "ecr.api" || interfaceEndpoint === "ecr.dkr" || interfaceEndpoint === "logs" ) &&  (!endpointFound.PrivateDnsEnabled)){
+          const ModifyVpcEndpointCommand = new ec2.ModifyVpcEndpointCommand({
+            PrivateDnsEnabled: true,
+            VpcEndpointId: endpointFound.VpcEndpointId
+          })
+          
+          console.log(`Private DNS is Disabled on ${interfaceEndpoint}, enabling now....`)
+
+          const ModifyVpcEndpointCommandResp = await client.send( ModifyVpcEndpointCommand )
+          console.log(`ModifyVpcEndpointCommandResp---> ${JSON.stringify(ModifyVpcEndpointCommandResp)}`);
+        }
+        
         console.log( `endpointFound444444---> ${ JSON.stringify( endpointFound.ServiceName ) }` );
         allEndpoints[ interfaceEndpoint ] = {
           endpointId: endpointFound.VpcEndpointId!,
