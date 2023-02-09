@@ -32,10 +32,10 @@ export class RoutingConstruct extends Construct
         if ( props.createVpc.toLocaleLowerCase() === "false" )
         {
             //get subnets in cdk from subnet ids
-            // const subnetIds: string[] = props.externalPrivateSubnetIds!.slice( 1, -1 ).split( "," ).map( ( s: string ) => s.trim() )  // ['subnet-0507c060b1c646a4e', 'subnet-0317c124a05351855']
-            const subnetIds: string[] =JSON.parse( props.externalPrivateSubnetIds! )
+            
+            const subnetIds: string[] = props.externalPrivateSubnetIds ?JSON.parse( props.externalPrivateSubnetIds):undefined
 
-            subnetsObj = subnetIds.map( ( subnet: string ) =>
+            subnetsObj = subnetIds?.map( ( subnet: string ) =>
             {
                 return ec2.Subnet.fromSubnetId( this, `${ stackName }-${ subnet }`, subnet )
             } )
@@ -52,8 +52,7 @@ export class RoutingConstruct extends Construct
             return {
                 ...domain,
                 PRIVATE_ZONE_ID: zone.hostedZoneId,
-                PRIVATE_ZONE: zone,
-                //TODO -  use wild card or fqdn domain for cert
+                PRIVATE_ZONE: zone,                
                 CERT_DOMAIN: `${ domain.CUSTOM_DOMAIN_URL.substring( domain.CUSTOM_DOMAIN_URL.indexOf( "." ) + 1 ) }`
             };
 
