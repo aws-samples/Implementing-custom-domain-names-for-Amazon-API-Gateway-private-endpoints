@@ -49,8 +49,7 @@ export const handler = async ( event: CloudFormationCustomResourceEvent, context
         : undefined;
 
 
-    // const subnetIds = externalPrivateSubnetIds.slice( 1, -1 ).split( "," ).map( ( s: string ) => s.trim() )
-    const subnetIds = JSON.parse( externalPrivateSubnetIds )
+    const subnetIds = externalPrivateSubnetIds ?JSON.parse( externalPrivateSubnetIds ) : undefined
 
     console.log( `subnetIds->-->${ subnetIds }` );
 
@@ -164,7 +163,7 @@ const handleCreateOrUpdate = async ( vpcId: string, externalPrivateSubnetIds: st
       {
         console.log( `S3 endpoint gateway not found , so creating---> ${ JSON.stringify( interfaceEndpoint ) }` )
         allEndpoints[ interfaceEndpoint ] = {
-          endpointId: await createEndpoint( vpcId, interfaceEndpoint, 'Gateway', externalPrivateSubnetIds, externalEndpointSg ),
+          endpointId: await createEndpoint( vpcId, interfaceEndpoint, 'Gateway', externalEndpointSg, externalPrivateSubnetIds ),
           isCreated: true
         }
 
@@ -195,7 +194,7 @@ const handleCreateOrUpdate = async ( vpcId: string, externalPrivateSubnetIds: st
     {
       console.log( `endpoint Not Found 7777---> ${ interfaceEndpoint }` );
       allEndpoints[ interfaceEndpoint ] = {
-        endpointId: await createEndpoint( vpcId, interfaceEndpoint, interfaceEndpoint === 's3' ? 'Gateway' : 'Interface', externalPrivateSubnetIds, externalEndpointSg ),
+        endpointId: await createEndpoint( vpcId, interfaceEndpoint, interfaceEndpoint === 's3' ? 'Gateway' : 'Interface', externalEndpointSg , externalPrivateSubnetIds ),
         isCreated: true
       }
     }
@@ -213,9 +212,9 @@ async function sleep ( ms: number )
 const createEndpoint = async (
   vpcId: string,
   endpoint: string,
-  type: "Interface" | "Gateway",
-  externalPrivateSubnetIds: string[],
-  externalEndpointSg: string
+  type: "Interface" | "Gateway",  
+  externalEndpointSg: string,
+  externalPrivateSubnetIds?: string[]
 ) =>
 {
   console.log( "creating Endpoint", endpoint, type )
@@ -236,7 +235,7 @@ const createEndpoint = async (
   return endpointResponse.VpcEndpoint?.VpcEndpointId!;
 }
 
-const getPrivateRouteTableIds = async ( vpcId: string, externalPrivateSubnetIds: string[] ): Promise<string[] | undefined> =>
+const getPrivateRouteTableIds = async ( vpcId: string, externalPrivateSubnetIds?: string[] ): Promise<string[] | undefined> =>
 {
   const commandRouteTable = new ec2.DescribeRouteTablesCommand( {
     Filters: [
