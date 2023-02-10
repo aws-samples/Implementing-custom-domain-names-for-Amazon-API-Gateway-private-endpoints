@@ -4,7 +4,7 @@ import { CloudFormationCustomResourceCreateEvent, CloudFormationCustomResourceEv
 const region = process.env.AWS_REGION;
 const client = new ec2.EC2Client( {} )
 export const handler = async ( event: CloudFormationCustomResourceEvent ) =>
-{  
+{
   let apiGatewayVpcDNSName: string | undefined = ''
   console.log( "event", event )
 
@@ -32,16 +32,30 @@ export const handler = async ( event: CloudFormationCustomResourceEvent ) =>
         ],
       } )
 
-      const vpcEndpoints: ec2.DescribeVpcEndpointsCommandOutput = await client.send( command )
-      if ( typeof vpcEndpoints.VpcEndpoints !== 'undefined' )
+      const vpcEndpointsObj: ec2.DescribeVpcEndpointsCommandOutput = await client.send( command )
+      let timer = 0;
+      while ( typeof vpcEndpointsObj === 'undefined' || 
+              typeof vpcEndpointsObj.VpcEndpoints === 'undefined' || 
+              typeof vpcEndpointsObj.VpcEndpoints[ 0 ] === 'undefined' || 
+              typeof vpcEndpointsObj.VpcEndpoints[ 0 ].DnsEntries === 'undefined' || 
+              typeof vpcEndpointsObj.VpcEndpoints[ 0 ].DnsEntries[ 0 ] === 'undefined' || 
+              typeof vpcEndpointsObj.VpcEndpoints[ 0 ].DnsEntries[ 0 ].DnsName === 'undefined' )
       {
-        if ( typeof vpcEndpoints.VpcEndpoints[ 0 ].DnsEntries !== 'undefined' )
+        if ( timer >= 300 )
         {
-          apiGatewayVpcDNSName = vpcEndpoints.VpcEndpoints[ 0 ].DnsEntries[ 0 ].DnsName
-          console.log( `execute-api DnsEntry---> ${ apiGatewayVpcDNSName }` );
-
+          console.error( 'The required object values were not found within 300 seconds.' );
+          break;
         }
+        timer++;
+        console.log( 'Waiting for object values...' );
+        await new Promise( resolve => setTimeout( resolve, 10000 ) );
       }
+
+      const apiGatewayVpcDNSName = vpcEndpointsObj?.VpcEndpoints[ 0 ].DnsEntries[ 0 ].DnsName;
+      console.log( 'API Gateway VPC DNS name:', apiGatewayVpcDNSName );
+
+
+
       return {
         Status: 'SUCCESS',
         Data: {

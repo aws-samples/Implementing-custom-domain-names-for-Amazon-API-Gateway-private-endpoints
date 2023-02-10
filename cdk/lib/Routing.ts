@@ -32,13 +32,17 @@ export class RoutingConstruct extends Construct
         if ( props.createVpc.toLocaleLowerCase() === "false" )
         {
             //get subnets in cdk from subnet ids
-            
-            const subnetIds: string[] = props.externalPrivateSubnetIds ?JSON.parse( props.externalPrivateSubnetIds):undefined
-
-            subnetsObj = subnetIds?.map( ( subnet: string ) =>
+            const subnetIds: string[] = props.externalPrivateSubnetIds ? JSON.parse( props.externalPrivateSubnetIds ) : undefined
+            if ( subnetIds && subnetIds.length > 0 )
             {
-                return ec2.Subnet.fromSubnetId( this, `${ stackName }-${ subnet }`, subnet )
-            } )
+                subnetsObj = subnetIds?.map( ( subnet: string ) =>
+                {
+                    return ec2.Subnet.fromSubnetId( this, `${ stackName }-${ subnet }`, subnet )
+                } )
+            } else
+            {
+                subnetsObj =props.vpc.privateSubnets
+            }
         }
 
         // Create Private Route 53 Zones        
@@ -52,7 +56,7 @@ export class RoutingConstruct extends Construct
             return {
                 ...domain,
                 PRIVATE_ZONE_ID: zone.hostedZoneId,
-                PRIVATE_ZONE: zone,                
+                PRIVATE_ZONE: zone,
                 CERT_DOMAIN: `${ domain.CUSTOM_DOMAIN_URL.substring( domain.CUSTOM_DOMAIN_URL.indexOf( "." ) + 1 ) }`
             };
 
@@ -78,9 +82,6 @@ export class RoutingConstruct extends Construct
             }
         } );
 
-
-        // console.log( `uniqueCertWithPublicZones -->  ${ JSON.stringify( uniqueCertWithPublicZones, null, 2 )}` )
-
         // Create wild card certificates and add them to ELB listener
         const certs: aws_cert.Certificate[] = uniqueCertWithPublicZones.map( ( crt ) =>
         {
@@ -89,7 +90,7 @@ export class RoutingConstruct extends Construct
                 this,
                 `${ stackName }-certificate-${ crt.CERT_DOMAIN }`,
                 {
-                    domainName: `*.${ crt.CERT_DOMAIN }`, //TODO -  use wild card or fqdn domain for cert
+                    domainName: `*.${ crt.CERT_DOMAIN }`,
                     validation: aws_cert.CertificateValidation.fromDns(
                         aws_route53.PublicHostedZone.fromHostedZoneId(
                             this,
@@ -113,9 +114,9 @@ export class RoutingConstruct extends Construct
                     vpc: props.vpc,
                     vpcSubnets: {
                         onePerAz: true,
-                        subnetType: props.createVpc.toLocaleLowerCase() === "true" ? ec2.SubnetType.PRIVATE_ISOLATED: undefined,
-                        subnets: props.createVpc.toLocaleLowerCase() === "false"? subnetsObj : undefined
-                        
+                        subnetType: props.createVpc.toLocaleLowerCase() === "true" ? ec2.SubnetType.PRIVATE_ISOLATED : undefined,
+                        subnets: props.createVpc.toLocaleLowerCase() === "false" ? subnetsObj : undefined
+
                     },
                     internetFacing: false,
                     crossZoneEnabled: true,
@@ -175,8 +176,8 @@ export class RoutingConstruct extends Construct
                     vpc: props.vpc,
                     vpcSubnets: {
                         onePerAz: true,
-                        subnetType: props.createVpc.toLocaleLowerCase() === "true" ? ec2.SubnetType.PRIVATE_ISOLATED: undefined,
-                        subnets: props.createVpc.toLocaleLowerCase() === "false"? subnetsObj: undefined
+                        subnetType: props.createVpc.toLocaleLowerCase() === "true" ? ec2.SubnetType.PRIVATE_ISOLATED : undefined,
+                        subnets: props.createVpc.toLocaleLowerCase() === "false" ? subnetsObj : undefined
                     },
                     securityGroup: props.albSG,
                     internetFacing: false,
