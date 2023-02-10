@@ -30,8 +30,8 @@ export class NetworkingConstruct extends Construct
     public readonly privateSubnets: ec2.ISubnet[]
     public readonly albSG: ec2.SecurityGroup
     public readonly fgSG: ec2.SecurityGroup
-    public readonly endpointSG: ec2.SecurityGroup    
-    public readonly apiGatewayVPCInterfaceEndpointId: string   
+    public readonly endpointSG: ec2.SecurityGroup
+    public readonly apiGatewayVPCInterfaceEndpointId: string
 
     constructor ( scope: Construct, id: string, props: NetworkingConstructProps )
     {
@@ -84,7 +84,7 @@ export class NetworkingConstruct extends Construct
                 allowAllOutbound: false,
             } )
             cdk.Tags.of( this.fgSG ).add( 'Name', 'fargate-sg' )
-            console.log(`Create Fargate SG`);
+            console.log( `Create Fargate SG` );
 
             // Get S3 Gateway Endpoint Prefix Lists from Custom Resource
             const prefixLists = new cr.AwsCustomResource( this, `${ stackName }-prefixLists`, {
@@ -133,8 +133,8 @@ export class NetworkingConstruct extends Construct
                 `${ stackName }-fg-sg`,
                 props.externalFargateSgId
             ) as ec2.SecurityGroup;
-            
-            console.log(`Found external Fargate SG`);
+
+            console.log( `Found external Fargate SG` );
         }
         //ALB SG
         if ( props.elbType === elbTypeEnum.ALB )
@@ -166,7 +166,7 @@ export class NetworkingConstruct extends Construct
                     securityGroups: [ this.albSG ]
                 } ), ec2.Port.tcp( 80 ) )
 
-                console.log(`Create ALB SG`);
+                console.log( `Create ALB SG` );
             } else
             {
 
@@ -176,7 +176,7 @@ export class NetworkingConstruct extends Construct
                     props.externalAlbSgId
                 ) as ec2.SecurityGroup;
 
-                console.log(`Found external ALB SG`);
+                console.log( `Found external ALB SG` );
             }
         } else
         {
@@ -206,7 +206,7 @@ export class NetworkingConstruct extends Construct
                 securityGroups: [ this.endpointSG ]
             } ), ec2.Port.tcp( 443 ) )
 
-            console.log(`Create Endpoint SG`);
+            console.log( `Create Endpoint SG` );
         }
         else
         {
@@ -216,7 +216,7 @@ export class NetworkingConstruct extends Construct
                 props.externalEndpointSgId
             ) as ec2.SecurityGroup
 
-            console.log(`Found external Endpoint SG`);
+            console.log( `Found external Endpoint SG` );
         }
 
         if ( props.createVpc.toLocaleLowerCase() === "true" )
@@ -271,6 +271,20 @@ export class NetworkingConstruct extends Construct
             this.apiGatewayVPCInterfaceEndpointId = apiGatewayVPCInterfaceEndpoint.vpcEndpointId
         } else
         {
+            let extPrivateSubnetIds: string
+            if ( props.externalPrivateSubnetIds && ( JSON.parse( props.externalPrivateSubnetIds ) as string[] ).length > 0 )
+            {
+                extPrivateSubnetIds = props.externalPrivateSubnetIds
+            } else
+            {
+                //get all private subnets
+                extPrivateSubnetIds = JSON.stringify( this.vpc.privateSubnets.map( ( subnet ) =>
+                {
+                    return subnet.subnetId
+                } ))
+            }
+            console.log( `extPrivateSubnetIds--->${ extPrivateSubnetIds }` )
+
             const customResourceLambda = new NodejsFunction(
                 this,
                 `${ stackName }-CustomResource-Fn`,
@@ -309,7 +323,7 @@ export class NetworkingConstruct extends Construct
                 }
             )
 
-            
+
             const objCustomResource = new cdk.CustomResource(
                 this,
                 `CustomResourceCreateVPCEndpoints`,
@@ -318,7 +332,7 @@ export class NetworkingConstruct extends Construct
                     serviceToken: customResourceProvider.serviceToken,
                     properties: {
                         vpcId: props.externalVpcId,
-                        externalPrivateSubnetIds: props.externalPrivateSubnetIds,
+                        externalPrivateSubnetIds: extPrivateSubnetIds,
                         Dummy: 1,
                         ExternalFargateSg: this.fgSG.securityGroupId,
                         ExternalEndpointSg: this.endpointSG.securityGroupId

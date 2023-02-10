@@ -41,8 +41,8 @@ export class FargateServiceConstruct extends Construct
         const cluster = new ecs.Cluster( this, `${ stackName }-cluster`, {
             vpc: props.vpc,
         } )
-
-        // // the role assumed by the task and its containers
+        
+        // the role assumed by the task and its containers
         const taskRole = new iam.Role( this, `${ stackName }-task-role`, {
             assumedBy: new iam.ServicePrincipal( "ecs-tasks.amazonaws.com" ),
             //roleName: "task-role",
@@ -90,6 +90,7 @@ export class FargateServiceConstruct extends Construct
             bundling: {
                 externalModules: [ "@aws-sdk/client-ec2" ],
             },
+            timeout: cdk.Duration.minutes( 5 ),
         } )
 
         const lambdaPolicy = new PolicyStatement( {
