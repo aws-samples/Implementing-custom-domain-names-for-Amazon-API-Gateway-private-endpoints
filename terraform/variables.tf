@@ -57,15 +57,7 @@ variable "external_private_subnets_id" {
   }
 }
 
-variable "external_alb_sg_id" {
-  type    = string
-  default = ""
-  validation {
-    condition     = can(regex("(sg-[0-9a-f]+|)", var.external_alb_sg_id))
-    error_message = "Invalid external security group id."
-  }
 
-}
 
 variable "elb_type" {
   type        = string
@@ -119,4 +111,37 @@ variable "task_scale_cpu_pct" {
   type        = number
   description = "CPU usage percentage that will cause ECS to increase the task count."
   default     = 80
+}
+
+variable "external_endpoint_sg_id" {
+  type    = string
+  default = null
+  nullable = true
+  validation {
+    condition     = can(regex("(sg-[0-9a-f]+|)", var.external_endpoint_sg_id)) || var.external_endpoint_sg_id == null
+    error_message = "Invalid external security group id."
+  }
+
+}
+
+variable "external_fargate_sg_id" {
+  type    = string
+  default = null
+  nullable = true
+  validation {
+    condition     = can(regex("(sg-[0-9a-f]+|)", var.external_fargate_sg_id)) || var.external_fargate_sg_id == null
+    error_message = "Invalid external security group id."
+  }
+
+}
+
+variable "external_alb_sg_id" {
+  type    = string
+  default = null
+  nullable = true
+  validation {
+    condition     = can(regex("(sg-[0-9a-f]+|)", var.external_alb_sg_id)) || var.external_alb_sg_id == null
+    error_message = "Invalid external security group id."
+  }
+
 }

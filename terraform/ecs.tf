@@ -1,3 +1,40 @@
+resource "aws_security_group" "fg" {
+  count = var.external_fargate_sg_id == null ? 1 : 0
+  name        = "${local.name_prefix}_fg"
+  vpc_id      = local.vpc_id
+  description = "Egress from Fargate"
+  egress {
+    description     = "HTTPS to Service Endpoints"
+    from_port       = "443"
+    to_port         = "443"
+    protocol        = "tcp"
+    security_groups = [data.aws_security_group.endpoints.id]
+  }
+  egress {
+    description = "DNS to AWS Resolver"
+    from_port   = "53"
+    to_port     = "53"
+    protocol    = "udp"
+    cidr_blocks = ["${cidrhost(data.aws_vpc.selected.cidr_block, 2)}/32"]
+  }
+}
+
+data "aws_security_group" "fg" {
+  id = var.external_fargate_sg_id != null ? var.external_fargate_sg_id : aws_security_group.fg[0].id
+}
+
+resource "aws_security_group_rule" "fg_ingress" {
+  type              = "ingress"
+  description       = "Ingress to Fargate"
+  security_group_id = data.aws_security_group.fg.id
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+
+  source_security_group_id = var.elb_type == "ALB" ? local.alb_sg_id : null
+  cidr_blocks              = var.elb_type == "NLB" ? ["0.0.0.0/0"] : null #tfsec:ignore:aws-ec2-no-public-ingress-sgr #exposure required for ingress on NLB
+}
+
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = ">=4.1.1"
@@ -122,7 +159,7 @@ resource "aws_ecs_service" "nginx" {
   network_configuration {
     subnets          = local.private_subnets
     assign_public_ip = false
-    security_groups  = [aws_security_group.fg.id]
+    security_groups  = [data.aws_security_group.fg.id]
   }
 
   load_balancer {

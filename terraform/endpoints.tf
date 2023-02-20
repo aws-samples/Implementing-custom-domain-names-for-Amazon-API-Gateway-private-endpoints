@@ -18,7 +18,7 @@ locals {
 data "external" "existing_endpoint" {
   for_each = { for endpoint in local.endpoints : endpoint => {
     endpoint = endpoint
-    vpc_id   = local.vpc_id
+    vpc_id   = data.aws_vpc.selected.id
     }
   }
 
@@ -30,8 +30,8 @@ module "endpoints" {
   source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
   version = "~>3.18.1"
 
-  security_group_ids = [aws_security_group.vpc_endpoints.id]
-  vpc_id             = local.vpc_id
+  security_group_ids = [data.aws_security_group.endpoints.id]
+  vpc_id             = data.aws_vpc.selected.id
   endpoints = { for endpoint in local.endpoints : endpoint => {
 
     create  = lookup(local.endpoint_ids, endpoint, false)
@@ -39,4 +39,23 @@ module "endpoints" {
 
     }
   }
+}
+
+
+resource "aws_security_group" "vpc_endpoints" {
+  count = var.external_endpoint_sg_id == null ? 1 : 0
+  name        = "${local.name_prefix}_vpc_endpoints"
+  description = "Ingress to Service Endpoints"
+  vpc_id      = local.vpc_id
+  ingress {
+    description = "HTTPS Ingress from VPC"
+    from_port   = "443"
+    to_port     = "443"
+    protocol    = "tcp"
+    cidr_blocks = [data.aws_vpc.selected.cidr_block]
+  }
+}
+
+data "aws_security_group" "endpoints" {
+  id = var.external_endpoint_sg_id != null ? var.external_endpoint_sg_id : aws_security_group.vpc_endpoints[0].id
 }
