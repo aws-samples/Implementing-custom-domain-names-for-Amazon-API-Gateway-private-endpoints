@@ -426,9 +426,8 @@ outputs/*
 cdk/output.json
 **/.awsconfig
 **/.awscredentials
+!samples/vars.yaml
 **/vars.yaml
-!config/proxy-config-template.yaml
-!config/vars-template.yaml
 config/*.yaml
 terraform/backend.tf
 *.env
