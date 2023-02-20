@@ -380,6 +380,3 @@ package-lock.json
 yarn.lock
 .cdk.staging
 cdk.out
-
-proxy-service/proxy-image/nginx.conf
-nginx.conf
