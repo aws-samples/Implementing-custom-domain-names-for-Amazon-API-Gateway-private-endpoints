@@ -322,23 +322,6 @@ This Infrastructure-as-code (IaC) deployment will create the following component
   - [Fargate Tasks](#fg_sg)
   - [VPC Endpoints](#vpce_sg)
 
-A security group with rules for your Application load balancer alb-sg, with the following rules
-  - Ingress on TCP 443 on local from all of VPC CIDR
-  - Egress allowed Fargate Security Group fargate-sg
-- A security group with rules for your Fargate ECS service fargate-sg (Which will host Nginx proxy)
-  - IF you chose ELB_TYPE as ALB (Application Load Balancer)
-    - Allow Ingress from alb-sg
-    - Allow Egress outbound all ports/ destinations
-  - IF you chose ELB_TYPE as NLB (Network Load Balancer)
-    - Ingress on TCP 80 from all VPC private subnets
-    - Allow Egress outbound all ports/ destinations
-- A security group which will be attached to your interface endpoints
-- Private links endpoints for following services
-  - Interface endpoint for API Gateway
-  - Interface endpoint for ECR API (Private DNS Enabled)
-  - Interface endpoint for ECR Registry (Private DNS Enabled)
-  - Interface endpoint for Logs (Private DNS Enabled)
-  - Gateway endpoint for S3
 
 #### Security Groups
 
