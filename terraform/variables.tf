@@ -37,9 +37,10 @@ variable "vpc_cidr" {
 
 variable "external_vpc_id" {
   type    = string
-  default = ""
+  default = null
+  nullable = true
   validation {
-    condition     = can(regex("(vpc-[0-9a-f]+|)", var.external_vpc_id))
+    condition     = can(regex("(vpc-[0-9a-f]+|)", var.external_vpc_id)) || var.external_vpc_id == null
     error_message = "Invalid external vpc id."
   }
 }
