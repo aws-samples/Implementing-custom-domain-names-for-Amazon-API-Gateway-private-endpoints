@@ -15,5 +15,4 @@ locals {
   service_name    = "${local.name_prefix}_nginx"
   vpc_id          = var.external_vpc_id == null ? module.vpc[0].vpc_id : var.external_vpc_id
   private_subnets = var.external_vpc_id == null ? module.vpc[0].private_subnets : var.external_private_subnets_id
-  alb_sg_id       = var.elb_type == "ALB" ? can(regex("^sg.*", var.external_alb_sg_id)) ? var.external_alb_sg_id : aws_security_group.alb[0].id : null
 }
