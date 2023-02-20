@@ -227,30 +227,28 @@ function set_aws_credentials() {
 
 #Validate proxy-config file
 PROXY_CONFIG_PATH=${PROXY_CONFIG_PATH:-"config/proxy-config.yaml"}
-PROXY_CONFIG_PATH=$(readlink -f "${PROXY_CONFIG_PATH}")
-export PROXY_CONFIG_PATH
+if PROXY_CONFIG_PATH=$(readlink -f "${PROXY_CONFIG_PATH}"); then
+	export PROXY_CONFIG_PATH
+else
+	echo "PROXY_CONFIG_PATH ${PROXY_CONFIG_PATH} unavailable."
+	exit 1
+fi
 
 # Ensure source file is POSIX compatible for line reads
 if ! tail -1 "${PROXY_CONFIG_PATH}" | grep -E '^$'; then
 	echo >>"${PROXY_CONFIG_PATH}"
 fi
-if [ -s "${PROXY_CONFIG_PATH}" ]; then
-	count=0
+if [ -s "${PROXY_CONFIG_PATH}" ] && grep PRIVATE_API_URL "${PROXY_CONFIG_PATH}" > /dev/null ; then
 	while read -r line
 	do
-	#validate private API url
-		if echo "${line}" | grep PRIVATE_API_URL > /dev/null 2>&1; then
-			if ! echo "${line}" | awk '{print$2}' | grep -E "^(https:\/\/)([a-z0-9]*)\.(execute-api)\.([a-z]*)-([a-z]*)-([a-z]*-)?([0-9])\.amazonaws\.(com|cn)\/([a-zA-Z0-9\-\_]*)\/" > /dev/null 2>&1; then
+		#validate private API url
+		if [[ "${line}" =~ [[[:space:]]-]?(PRIVATE_API_URL:).* ]]; then
+			if ! [[ "${line}" =~ [[[]:space:]]-]?(PRIVATE_API_URL:)[[:space:]]?(https://)[a-z0-9]*.execute-api.([a-z]*-){2,3}[0-9].amazonaws.com(.cn)?(/.*){1,}(\#.*)? ]]; then
 				echo "${line} is invalid or does not match the accepted API URL pattern."
 				exit 1
 			fi
-			count=$(( count + 1))
 		fi
 	done < "${PROXY_CONFIG_PATH}"
-	if [[ $count -lt 1 ]]; then
-		echo "No valid PRIVATE_API_URL entries were found in ${PROXY_CONFIG_PATH}"
-		exit 1
-	fi
 else
   echo "No valid proxy configuration file exists in ${PROXY_CONFIG_PATH}.  A valid file must exist before deployment can continue."
   exit 1
@@ -340,7 +338,6 @@ if [ "${execution_tool}" == "terraform" ]; then
 			if [[ "${k}" =~ (TF_VAR_#) ]]; then
 				continue
 			fi
-			echo $k $v
 			eval "export $k=$v"
 		done < "${var_file}"
 		export TF_VAR_proxy_config_path="${PROXY_CONFIG_PATH}"
