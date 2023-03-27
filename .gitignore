@@ -1,2 +1,4 @@
+ignore/*
 config/*.yaml
 outputs/*
+.vscode/*
