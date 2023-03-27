@@ -51,8 +51,15 @@ export const handler = async ( event: CloudFormationCustomResourceEvent ) =>
         await new Promise( resolve => setTimeout( resolve, 10000 ) );
       }
 
-      const apiGatewayVpcDNSName = vpcEndpointsObj?.VpcEndpoints[ 0 ].DnsEntries[ 0 ].DnsName;
-      console.log( 'API Gateway VPC DNS name:', apiGatewayVpcDNSName );
+      if ( vpcEndpointsObj?.VpcEndpoints && vpcEndpointsObj.VpcEndpoints[ 0 ]?.DnsEntries && vpcEndpointsObj.VpcEndpoints[ 0 ].DnsEntries[ 0 ]?.DnsName )
+      {
+        apiGatewayVpcDNSName = vpcEndpointsObj.VpcEndpoints[ 0 ].DnsEntries[ 0 ].DnsName;
+        console.log( 'API Gateway VPC DNS name:', apiGatewayVpcDNSName );
+      } else
+      {
+        console.error( 'API Gateway VPC DNS name, The required object values were not found within 300 seconds.' );
+      }
+      
 
 
 
