@@ -1,6 +1,6 @@
 ---
 VARIABLES:
-  - CREATE_VPC: false
+  - CREATE_VPC: true
     APP_ENVIRONMENT: Dev
     APP_NAME: reverse-proxy
     ELB_TYPE: NLB
