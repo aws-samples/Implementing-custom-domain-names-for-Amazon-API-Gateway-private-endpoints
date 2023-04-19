@@ -1,7 +1,7 @@
 ---
 APIS:
   - CUSTOM_DOMAIN_URL: api1.internal.private.example.com # URL to proxy access to the private API
-    PRIVATE_API_URL: https://api-id1.execute-api.us-east-1.amazonaws.com/dev # Example AWS Account B with verbs
+    PRIVATE_API_URL: https://apiid1.execute-api.us-east-1.amazonaws.com/dev # Example AWS Account B with verbs
     VERBS: ["GET", "POST"]
   - CUSTOM_DOMAIN_URL: api2.private.example2.com # URL to proxy access to the private API
-    PRIVATE_API_URL: https://api-id2.execute-api.us-east-1.amazonaws.com/dev/path1/path2 # Example AWS Account C
+    PRIVATE_API_URL: https://apiid2.execute-api.us-east-1.amazonaws.com/dev # Example AWS Account C
