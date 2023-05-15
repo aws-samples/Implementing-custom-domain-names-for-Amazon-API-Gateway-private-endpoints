@@ -1,7 +1,7 @@
 resource "aws_security_group" "fg" {
   count = var.external_fargate_sg_id == null ? 1 : 0
   name        = "${local.name_prefix}_fg"
-  vpc_id      = local.vpc_id
+  vpc_id      = data.aws_vpc.selected.id
   description = "Egress from Fargate"
   egress {
     description     = "HTTPS to Service Endpoints"
@@ -11,16 +11,28 @@ resource "aws_security_group" "fg" {
     security_groups = [data.aws_security_group.endpoints.id]
   }
   egress {
-    description = "DNS to AWS Resolver"
-    from_port   = "53"
-    to_port     = "53"
-    protocol    = "udp"
-    cidr_blocks = ["${cidrhost(data.aws_vpc.selected.cidr_block, 2)}/32"]
+    description = "HTTPS to S3 Gateway Endpoint"
+    from_port   = "443"
+    to_port     = "443"
+    protocol    = "tcp"
+    prefix_list_ids = [data.aws_prefix_list.s3.id]
   }
 }
 
 data "aws_security_group" "fg" {
   id = var.external_fargate_sg_id != null ? var.external_fargate_sg_id : aws_security_group.fg[0].id
+}
+
+data "aws_vpc_endpoint_service" "s3" {
+  service = "s3"
+  service_type = "Gateway"
+}
+
+data "aws_prefix_list" "s3" {
+  filter {
+    name = "prefix-list-name"
+    values = [data.aws_vpc_endpoint_service.s3.service_name]
+  }
 }
 
 resource "aws_security_group_rule" "fg_ingress" {
