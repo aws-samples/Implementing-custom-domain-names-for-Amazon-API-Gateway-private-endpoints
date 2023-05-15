@@ -23,7 +23,10 @@ data "external" "existing_endpoint" {
   }
 
   program = ["/bin/bash", "${path.module}/scripts/existing_endpoint.sh", each.value.endpoint, each.value.vpc_id]
+}
 
+data "aws_route_tables" "selected" {
+  vpc_id = data.aws_vpc.selected.id
 }
 
 module "endpoints" {
@@ -31,12 +34,15 @@ module "endpoints" {
   version = "~>3.18.1"
 
   security_group_ids = [data.aws_security_group.endpoints.id]
+  subnet_ids= local.private_subnets
   vpc_id             = data.aws_vpc.selected.id
   endpoints = { for endpoint in local.endpoints : endpoint => {
 
     create  = lookup(local.endpoint_ids, endpoint, false)
     service = endpoint
-
+    private_dns_enabled = endpoint != "s3" ? true : null
+    service_type = endpoint == "s3" ? "Gateway" : "Interface"
+    route_table_ids = endpoint == "s3" ? data.aws_route_tables.selected.ids : null
     }
   }
 }

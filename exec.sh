@@ -344,22 +344,6 @@ if [ "${execution_tool}" == "terraform" ]; then
 		pushd "${src_dir}/terraform" >/dev/null
 		terraform init
 		
-		# Import existing VPC endpoints
-		# TF_VAR_external_vpc_id=${TF_VAR_external_vpc_id:-null}
-		# if ! [[ "${TF_VAR_external_vpc_id}" == "null" ]]; then
-		# 	echo "Checking for existing endpoints in ${TF_VAR_external_vpc_id}..."
-		# 	vpc_endpoints=$(aws ec2 describe-vpc-endpoints --query "VpcEndpoints[?VpcId=='${TF_VAR_external_vpc_id}'].{VpcEndpointId: VpcEndpointId, ServiceName: ServiceName}" --output=json) > /dev/null 2>&1
-		# 	for endpoint in "${endpoints[@]}"; do
-		# 		endpoint_id=$(echo $vpc_endpoints| jq -r '.[]|select(.ServiceName|test("^.*'${endpoint}'$")).VpcEndpointId')
-		# 		if [[ "${endpoint_id}" =~ ^vpce-[a-f0-9]{7,17}$ ]]; then
-		# 			if ! terraform state show 'aws_vpc_endpoint.this["'"${endpoint}"'"]' > /dev/null 2>&1; then
-		# 				echo "${endpoint} endpoint ${endpoint_id} discovered, importing..."
-		# 				terraform import 'aws_vpc_endpoint.this["'"${endpoint}"'"]' "${endpoint_id}"
-		# 			fi
-		# 		fi
-		# 	done
-		# fi
-
 		# Execute terraform action
 		terraform "${action}" ${tf_args:-} ${downstream_args:-}
 		popd >/dev/null
