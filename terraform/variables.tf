@@ -72,12 +72,12 @@ variable "elb_type" {
 variable "task_image" {
   type        = string
   description = "Image reference for nginx ECS task"
-  default     = "public.ecr.aws/nginx/nginx"
+  default     = "amazonlinux"
 }
 
 variable "task_image_tag" {
   type    = string
-  default = "1.23"
+  default = "2"
 }
 
 variable "proxy_config_path" {
