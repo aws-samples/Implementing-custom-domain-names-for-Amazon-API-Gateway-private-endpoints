@@ -349,6 +349,9 @@ if [ "${execution_tool}" == "terraform" ]; then
 		
 		# Execute terraform action
 		terraform "${action}" ${tf_args:-} ${downstream_args:-}
+		if [ -f ${src_dir}/outputs/outputs.json ]; then
+			cat ${src_dir}/outputs/outputs.json | jq -r > ${src_dir}/outputs/outputs.json
+		fi
 		popd >/dev/null
 		;;
 	*)
