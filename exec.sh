@@ -338,6 +338,9 @@ if [ "${execution_tool}" == "terraform" ]; then
 			if [[ "${k}" =~ (TF_VAR_#) ]]; then
 				continue
 			fi
+			if [[ "${v}" =~ ^\[(.*)\]$ ]]; then
+				v="'${v}'"
+			fi
 			eval "export $k=$v"
 		done < "${var_file}"
 		export TF_VAR_proxy_config_path="${PROXY_CONFIG_PATH}"
