@@ -118,7 +118,8 @@ resource "aws_ecs_task_definition" "app" {
               apis = zipmap(
                 [for api in local.api_list : trimprefix(api.CUSTOM_DOMAIN_URL, "https://")],
                 [for api in local.api_list : trimprefix(api.PRIVATE_API_URL, "https://")]
-              ), dns_server = cidrhost(data.aws_vpc.selected.cidr_block, 2)
+              ), dns_server = cidrhost(data.aws_vpc.selected.cidr_block, 2,), 
+              endpoint_url = module.endpoints.endpoints["execute-api"].dns_entry[0].dns_name
             }
             )
           )

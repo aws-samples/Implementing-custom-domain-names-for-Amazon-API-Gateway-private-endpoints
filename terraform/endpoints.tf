@@ -8,10 +8,10 @@ locals {
   ]
   endpoint_ids = {
     "ecr.dkr"     = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
-    "ecr.api"     = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
-    "execute-api" = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
-    "logs"        = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
-    "s3"          = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.dkr}"].result)) ? null : true
+    "ecr.api"     = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["ecr.api}"].result)) ? null : true
+    "execute-api" = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["execute-api}"].result)) ? null : true
+    "logs"        = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["logs}"].result)) ? null : true
+    "s3"          = can(regex("(vpce-)[a-z0-9].*", data.external.existing_endpoint["s3}"].result)) ? null : true
   }
 }
 

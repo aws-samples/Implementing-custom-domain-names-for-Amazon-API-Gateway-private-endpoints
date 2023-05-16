@@ -43,8 +43,10 @@ http {
       location / {
           proxy_set_header X-Upstream-Domain  $server_name;
           proxy_set_header Referer $server_name;
-          set $apiUrl ${apiUrl};
-          proxy_pass https://$apiUrl;
+          proxy_set_header x-apigw-api-id ${split(".", apiUrl)[0]};
+          set $endpointUrl ${endpoint_url};
+          set $stage ${split("/", apiUrl)[1]};
+          proxy_pass https://$endpointUrl/$stage;
       }
     }
     %{ endfor ~}
