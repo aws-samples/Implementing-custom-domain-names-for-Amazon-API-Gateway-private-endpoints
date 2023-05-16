@@ -142,8 +142,8 @@ Deployment has multiple options which are declared using a variables file. The d
 | **EXTERNAL_ALB_SG_ID**  [link to sg table]()        | String         | _null_                     | If you would like to apply an existing security group to the load balancer instead of the solution creating one, provide the security group id                                                                                                                                                                   |
 | **EXTERNAL_ENDPOINT_SG_ID** | String | _null_ | If you would like to apply an existing security group to the VPC endpoints instead of the solution creating one, provide the security group id |
 | **EXTERNAL_FARGATE_SG_ID**      | String         | _null_                     | If you would like to apply an existing security group to the ECS cluster instead of the solution creating one, provide the security group id|
-| **TASK_IMAGE**                  | String         | public.ecr.aws/nginx/nginx | Provide nginx container image reference.<br><details><summary>_Important Image Notes_</summary>_Images are sourced locally and pushed to an ECR repository for deployment. Private repository sources are permitted and will require you to configure your local docker environment's authentication._</details> |
-| **TASK_IMAGE_TAG**              | String         | 1.23-alpine-perl           | Image tag for nginx container image referenced in TASK_IMAGE                                                                                                                                                                                                                                                     |
+| **TASK_IMAGE**                  | String         | amazonlinux | Provide nginx container image reference.<br><details><summary>_Important Image Notes_</summary>_Images are sourced locally and pushed to an ECR repository for deployment. Private repository sources are permitted and will require you to configure your local docker environment's authentication._</details> |
+| **TASK_IMAGE_TAG**              | String         | 2           | Image tag for nginx container image referenced in TASK_IMAGE                                                                                                                                                                                                                                                     |
 | **PROXY_CONFIG_PATH**           | String         | ./config/proxy-config.yaml | Relative path to the proxy configuration file.
 | **TASK_SCALE_CPU_PCT**          | Number         |     80                     | Metric used to scale fargate task- CPU utilization across all tasks in the service. Number between 0 and 100
 | **TASK_SCALE_MIN**              | Number         |     1                      | Minimum capacity to scale Fargate task
@@ -169,8 +169,8 @@ VARIABLES:
     EXTERNAL_ALB_SG_ID: sg-a1b2c3d4e5f6g7h8i
     EXTERNAL_ENDPOINT_SG_ID: sg-a1b2c3d4e5f6g7h8i
     EXTERNAL_FARGATE_SG_ID: sg-a1b2c3d4e5f6g7h8i
-    TASK_IMAGE: public.ecr.aws/nginx/nginx
-    TASK_IMAGE_TAG: 1.23-alpine-perl
+    TASK_IMAGE: amazonlinux
+    TASK_IMAGE_TAG: 2
     TASK_SCALE_CPU_PCT: 80 
     TASK_SCALE_MIN: 1
     TASK_SCALE_MAX: 2
