@@ -123,7 +123,7 @@ APIS:
     PRIVATE_API_URL: https://api-id2.execute-api.us-east-1.amazonaws.com/dev/path1/path2 # Example AWS Account C
 ```
 
-&nbsp;&nbsp;&nbsp;&nbsp;_Template is available in repository at [./samples/proxy-config.yaml](samples/proxy-config.yaml)_
+&nbsp;&nbsp;&nbsp;&nbsp;_Example template is available in repository at [./samples/proxy-config.yaml](samples/proxy-config.yaml)_
 
 ### Deployment Variables
 
@@ -177,7 +177,7 @@ VARIABLES:
     PROXY_CONFIG_PATH: ./config/proxy-config.yaml
 ```
 
-&nbsp;&nbsp;&nbsp;&nbsp;_Template is available in repository at [./samples/vars.yaml](samples/vars.yaml)_
+&nbsp;&nbsp;&nbsp;&nbsp;_Example template is available in repository at [./samples/vars.yaml](samples/vars.yaml)_
 
 ## Deployment Steps
 
