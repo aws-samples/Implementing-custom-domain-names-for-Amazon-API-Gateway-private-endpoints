@@ -132,9 +132,10 @@ export class FargateServiceConstruct extends Construct
                 memoryLimitMiB: 512,
                 image: ecs.ContainerImage.fromAsset( "./image", {
                     buildArgs: {
-                        TASK_IMAGE: props.taskImage,
+                        IMAGE: props.taskImage,
+                        PLATFORM:  "linux/arm64"
                     },
-                    platform: ecr_assets.Platform.LINUX_AMD64,
+                    platform: ecr_assets.Platform.LINUX_ARM64,
                 } ),
                 portMappings: [ { containerPort: 80 } ],
                 logging: ecs.LogDriver.awsLogs( {
@@ -148,7 +149,7 @@ export class FargateServiceConstruct extends Construct
                 entryPoint: [
                     "/bin/sh",
                     "-c",
-                    "echo $NGINX_CONFIG | base64 -d | sed -e \"s/API_GATEWAY_VPC_DNS_/${API_GATEWAY_VPC_DNS}/g\" > /etc/nginx/nginx.conf && nginx && tail -f /dev/null",
+                    "echo $NGINX_CONFIG | base64 -d | sed -e s/API_GATEWAY_VPC_DNS_/${API_GATEWAY_VPC_DNS}/g > /etc/nginx/nginx.conf && nginx && tail -f /dev/null",
                 ],
             }
         )
