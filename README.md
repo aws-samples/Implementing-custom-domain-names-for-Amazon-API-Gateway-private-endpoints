@@ -2,10 +2,9 @@
 
 [Amazon API Gateway](https://aws.amazon.com/api-gateway/) enables developers to create private REST APIs that can only be accessed from a [Virtual Private Cloud (VPC)](https://aws.amazon.com/vpc/). Traffic to the private API is transmitted over secure connections and stays within the AWS network, protecting it from the public internet. This makes private API Gateway endpoints suitable for publishing internal APIs, such as those used by microservices and data APIs.
 
-In microservice architectures, teams often build and manage components in separate AWS accounts and prefer to access those private API endpoints using company-specific custom domain names. Custom domain names serve as an alias for a hostname and path to your API. This makes it easier for clients to connect using an easy-to-remember vanity URL and also maintains a stable URL in case the underlying API endpoint URL changes. Custom domain names can also improve the organization of APIs according to their functions within the enterprise. For example, the standard API Gateway URL format: "https<nolink>://api-id.execute-api.region.amazonaws.com/stage" can be transformed into "https</nolink>://api.private.example.com/myservice".       
+In microservice architectures, teams often build and manage components in separate AWS accounts and prefer to access those private API endpoints using company-specific custom domain names. Custom domain names serve as an alias for a hostname and path to your API. This makes it easier for clients to connect using an easy-to-remember vanity URL and also maintains a stable URL in case the underlying API endpoint URL changes. Custom domain names can also improve the organization of APIs according to their functions within the enterprise. For example, the standard API Gateway URL format: "https<nolink>://api-id.execute-api.region.amazonaws.com/stage" can be transformed into "https</nolink>://api.private.example.com/myservice".
 
-
-See this blog [post](https://aws.amazon.com/blogs/compute/).
+See this blog [post](https://aws.amazon.com/blogs/compute/implementing-custom-domain-names-for-amazon-api-gateway-private-endpoints-using-a-reverse-proxy/).
 
 - [Implementing Custom Domain names with a Reverse Proxy for Amazon API Gateway Private Endpoints](#Implementing Custom Domain names with a Reverse Proxy for Amazon API Gateway Private Endpoints)
   - [Services Used](#services-used)
