@@ -108,8 +108,10 @@ resource "aws_ecs_task_definition" "app" {
       image       = module.docker_image.image_uri
       memory      = 1024
       name        = local.service_name
+      healthcheck = {
+        command = ["CMD-SHELL", "curl http://localhost || exit 1"]
+      }
       networkMode = "awsvpc"
-      entrypoint  = ["/bin/sh", "-c", "echo $NGINX_CONFIG | base64 -d > /etc/nginx/nginx.conf && nginx && tail -f /dev/null"]
       environment = [
         {
           name = "NGINX_CONFIG",

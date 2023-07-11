@@ -1,8 +1,3 @@
-resource "local_file" "proxy-config" {
-  filename = "${path.module}/..//${var.app_name}-${var.app_environment}-proxy-conf.yaml"
-  content  = templatefile("${path.module}/template_files/proxy-config.tftpl", yamldecode(file(local.proxy_config_path)))
-}
-
 resource "local_file" "output" {
   filename = "${path.module}/../outputs/outputs.json"
   content = jsonencode({
