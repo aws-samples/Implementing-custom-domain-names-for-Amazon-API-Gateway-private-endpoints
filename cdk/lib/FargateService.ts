@@ -77,9 +77,14 @@ export class FargateServiceConstruct extends Construct
             this,
             `${ stackName }-task`,
             {
-                cpu: 256,
+                cpu: 512,
+                memoryLimitMiB: 1024,
                 taskRole: taskRole,
                 executionRole: taskRole,
+                runtimePlatform: {
+                    cpuArchitecture: ecs.CpuArchitecture.ARM64,
+                    operatingSystemFamily: ecs.OperatingSystemFamily.LINUX
+                }
             }
         )
 
@@ -129,13 +134,12 @@ export class FargateServiceConstruct extends Construct
             `${ stackName }-container-def`,
             {
                 taskDefinition: taskDefinition,
-                memoryLimitMiB: 512,
+                memoryLimitMiB: 1024,
                 image: ecs.ContainerImage.fromAsset( "./image", {
                     buildArgs: {
                         IMAGE: props.taskImage,
                         PLATFORM:  "linux/arm64"
-                    },
-                    platform: ecr_assets.Platform.LINUX_ARM64,
+                    }
                 } ),
                 portMappings: [ { containerPort: 80 } ],
                 logging: ecs.LogDriver.awsLogs( {
@@ -146,11 +150,9 @@ export class FargateServiceConstruct extends Construct
                     NGINX_CONFIG: btoa( GenerateNginxConfig( props.proxyDomains) ), //base 64 encoded Nginx config file 
                     API_GATEWAY_VPC_DNS: apiGatewayVPCInterfaceEndpointDNSName
                 },
-                entryPoint: [
-                    "/bin/sh",
-                    "-c",
-                    "echo $NGINX_CONFIG | base64 -d | sed -e s/API_GATEWAY_VPC_DNS_/${API_GATEWAY_VPC_DNS}/g > /etc/nginx/nginx.conf && nginx && tail -f /dev/null",
-                ],
+                healthCheck: {
+                    command: [ "CMD-SHELL", "curl http://localhost || exit 1" ],
+                }
             }
         )
 
