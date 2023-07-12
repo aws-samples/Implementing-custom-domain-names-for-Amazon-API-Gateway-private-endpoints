@@ -1,5 +1,5 @@
 name: Validate and Format
-run-name: "${{ github.actor }} push request."
+run-name: "${{ github.actor }} pushed to ${{ github.ref_name }}"
 on:
   push:
     branches: 
