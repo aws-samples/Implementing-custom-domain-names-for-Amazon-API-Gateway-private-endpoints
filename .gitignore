@@ -2,3 +2,4 @@ ignore/*
 config/*.yaml
 outputs/*
 .vscode/*
+tfsec-*
