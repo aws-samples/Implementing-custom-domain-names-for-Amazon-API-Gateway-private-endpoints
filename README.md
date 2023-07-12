@@ -44,19 +44,20 @@ The architecture diagram below illustrates the interactions between the componen
 
 ## Traffic Flow
 
-1. A request to your API is made using a private custom domain from within a VPC or another device that is able to route to the VPC. For example, the request might be made using the domain https<nolink>://api.private.example.com.
+1. [AWS Certificate Manager (ACM)](https://aws.amazon.com/certificate-manager/) issues a wildcard certificate for the custom domain (*.example.com) using DNS validation against the [Amazon Route53](https://aws.amazon.com/route53/) public hosted zone for the example.com domain.
 
-1. An alias record in Amazon Route53 private hosted zone resolves to the fully qualified domain name of the private Elastic Load balancer (ELB). The ELB can be configured to be either a Network Load Balancer (NLB) or an Application Load Balancer (ALB).
+1. The client application queries the [Amazon Route53](https://aws.amazon.com/route53/) private hosted zone associated with the [Amazon Virtual Private Cloud (VPC)](https://aws.amazon.com/vpc/) and receives a CNAME record referencing the [Amazon Elastic Load Balancing](https://aws.amazon.com/elasticloadbalancing/) Network Load Balancer.
 
-1. The ELB uses an AWS Certificate Manager (ACM) certificate to terminate TLS (Transport Layer Security) for corresponding custom private domain.
+1. The client application sends a RESTful API call to the [Amazon Elastic Load Balancing](https://aws.amazon.com/elasticloadbalancing/) Network Load Balancer.
 
-1. The ELB listener redirects requests to an associated ELB target group, which in turn forwards the request to an Amazon Elastic Container Service task running on AWS Fargate.
+1. The [Amazon Elastic Load Balancing](https://aws.amazon.com/elasticloadbalancing/) Network Load Balancer forwards the request to the NGINX service running on [AWS Fargate](https://aws.amazon.com/fargate/) in [Amazon Elastic Container Service (ECS)](https://aws.amazon.com/ecs/).
 
-1. The Fargate service uses a task based on NGINX which acts as a reverse proxy to the private API endpoint in one or more provider accounts. The Fargate service is configured to automatically scale using a metric that tracks CPU utilization.
+1. The NGINX service maps the Host header in the RESTful API call to the appropriate [Amazon API Gateway](https://aws.amazon.com/api-gateway/) private endpoint and forwards the request to the execute-api service endpoint in the same Amazon VPC.
 
-1. The Fargate task appends the x-apigw-api-id header containing the target API ID to the request[^headersnote] , and forwards traffic to the appropriate private endpoints in provider Account B or Account C through a PrivateLink VPC Endpoint.
+1. The request is forwarded to the appropriate [Amazon API Gateway](https://aws.amazon.com/api-gateway/) private endpoint via AWS PrivateLink.
 
-1. The API Gateway resource policy limits access to the private endpoint(s) based on a specific VPC endpoint, HTTP verb(s), and source domain used to request the API.
+1. [Amazon API Gateway](https://aws.amazon.com/api-gateway/) validates the RESTful call source VPC endpoint, path, stage and method against the resource policy and executes the request if allowed.
+
 
 [^headersnote]: The solution will pass any additional information found in headers from upstream calls, such as authentication headers, content type headers, or custom data headers unmodified to private endpoints in provider accounts (Account B and Account C).
 
@@ -433,4 +434,4 @@ Do you really want to destroy all resources?
 ```
 
 
-[def]: ./assets/overview.png "Solution Overview"
+[def]: ./assets/Architecture.png "Solution Overview"
