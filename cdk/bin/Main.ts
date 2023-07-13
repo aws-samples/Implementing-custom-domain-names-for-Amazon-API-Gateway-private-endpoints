@@ -3,6 +3,7 @@ import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { ProxyServiceStack } from '../lib/ProxyServiceStack';
 import { IHostedZone } from 'aws-cdk-lib/aws-route53';
+import { AwsSolutionsChecks } from 'cdk-nag';
 
 export type proxyDomain = {
     // TLD: string,
@@ -39,7 +40,7 @@ const taskScaleCpuPercentage: number = Number(process.env.TASK_SCALE_MAX || '80'
 
 const Main = () => {
     const app = new cdk.App();
-
+    cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
     console.table(proxyDomains, [
         'CUSTOM_DOMAIN_URL',
         'PRIVATE_API_URL',

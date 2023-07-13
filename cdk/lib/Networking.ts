@@ -8,6 +8,9 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import { NagSuppressions } from 'cdk-nag';
 
 import { elbTypeEnum } from '../bin/Main';
 
@@ -54,6 +57,17 @@ export class NetworkingConstruct extends Construct {
                 maxAzs: 2,
                 subnetConfiguration: subnets,
                 ipAddresses: props.CIDR ? ec2.IpAddresses.cidr(props.CIDR) : undefined,
+            });
+
+            const logGroup = new logs.LogGroup(this, 'MyCustomLogGroup');
+
+            const role = new iam.Role(this, 'MyCustomRole', {
+                assumedBy: new iam.ServicePrincipal('vpc-flow-logs.amazonaws.com'),
+            });
+
+            new ec2.FlowLog(this, 'FlowLog', {
+                resourceType: ec2.FlowLogResourceType.fromVpc(this.vpc),
+                destination: ec2.FlowLogDestination.toCloudWatchLogs(logGroup, role),
             });
 
             this.privateSubnets = this.vpc.selectSubnets({
@@ -307,6 +321,7 @@ export class NetworkingConstruct extends Construct {
                 ],
                 resources: ['*'],
             });
+
             customResourceLambda.addToRolePolicy(lambdaPolicy);
 
             // Create a custom resource provider which wraps around the lambda above
@@ -329,6 +344,24 @@ export class NetworkingConstruct extends Construct {
             });
             this.apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt('executeAPIVpcEndpointId').toString();
         }
+        NagSuppressions.addResourceSuppressions(
+            prefixLists,
+            [
+                {
+                    id: 'AwsSolutions-IAM5',
+                    reason: 'The lambda function requires the resource wildcard for functionality',
+                    appliesTo: [
+                        'Action::ec2:DescribeVpcEndpoints',
+                        'Action::ec2:CreateVpcEndpoint',
+                        'Action::ec2:DeleteVpcEndpoints',
+                        'Action::ec2:UpdateVpcEndpoint',
+                        'Action::ec2:DescribeRouteTables',
+                        'Action::ec2:DescribePrefixLists',
+                    ],
+                },
+            ],
+            true,
+        );
     }
     _error(msg: string) {
         throw new Error(msg);

@@ -14,6 +14,7 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { ApplicationTargetGroup, NetworkTargetGroup } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { proxyDomain } from '../bin/Main';
 import { GenerateNginxConfig } from './Utils';
+import { NagSuppressions } from 'cdk-nag';
 
 type FargateProps = {
     vpc: ec2.Vpc;
@@ -67,6 +68,7 @@ export class FargateServiceConstruct extends Construct {
                 ],
             }),
         );
+
 
         const taskDefinition = new ecs.FargateTaskDefinition(this, `${stackName}-task`, {
             cpu: 512,
@@ -167,5 +169,24 @@ export class FargateServiceConstruct extends Construct {
         scalableTaskCountObject.scaleOnCpuUtilization(id, {
             targetUtilizationPercent: props.taskScaleCpuPercentage,
         });
+
+        NagSuppressions.addResourceSuppressions(
+            this,
+            [
+                {
+                    id: 'AwsSolutions-IAM5',
+                    reason: 'The task role requires the resource wildcard for functionality',
+                    appliesTo: [
+                        'Action::ecr:GetAuthorizationToken',
+                        'Action::ecr:BatchCheckLayerAvailability',
+                        'Action::ecr:GetDownloadUrlForLayer',
+                        'Action::ecr:BatchGetImage',
+                        'Action::logs:CreateLogStream',
+                        'Action::logs:PutLogEvents',
+                    ],
+                },
+            ],
+            true,
+        );
     }
 }
