@@ -2,13 +2,14 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { ProxyServiceStack } from '../lib/ProxyServiceStack';
+import { IHostedZone } from 'aws-cdk-lib/aws-route53';
 
 export type proxyDomain = {
     // TLD: string,
     CUSTOM_DOMAIN_URL: string;
     PRIVATE_API_URL: string;
     PRIVATE_ZONE_ID?: string;
-    PRIVATE_ZONE?: any;
+    PRIVATE_ZONE: IHostedZone;
     ROUTE53_PUBLIC_DOMAIN?: string;
     VERBS?: string[];
     PUBLIC_ZONE_ID?: string;

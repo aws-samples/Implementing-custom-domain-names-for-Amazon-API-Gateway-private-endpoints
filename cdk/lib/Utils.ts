@@ -1,15 +1,4 @@
 import { proxyDomain } from '../bin/Main';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-
-function checkApiGatewayURLPattern(url: string) {
-    const pattern =
-        /https:\/\/[a-z0-9]*.execute-api.(us(-gov)?|ap|ca|cn|eu|sa)-(central|(north|south)?(east|west)?)-\d.amazonaws.com\/[a-z0-9]/gi;
-    const reg = new RegExp(pattern);
-    if (!reg.test(url)) {
-        const msg = `PRIVATE_API_URL in file proxy-config.yaml with value ${url} does not follow a pattern https://<api-id>.execute-api.<region>.amazonaws.com/stage/`;
-        throw new Error(msg);
-    }
-}
 
 export const GenerateNginxConfig = (domainsList: proxyDomain[]): string => {
     let conf_file_str = `user  nginx;
@@ -50,13 +39,11 @@ http {
     }
     `;
     domainsList.forEach((record) => {
-        // console.log(`${record.PRIVATE_API_URL}`);
         //extract api id from api gateway url
         const apiId = record.PRIVATE_API_URL.split('.')[0].split('https://')[1];
         const privateAPIurl = `https://API_GATEWAY_VPC_DNS_${record.PRIVATE_API_URL.substring(
             record.PRIVATE_API_URL.indexOf('amazonaws.com') + 13,
         )}`;
-        // console.log( `${ privateAPIurl }` )
 
         const conf_file_item = `
     server {
@@ -76,6 +63,5 @@ http {
         conf_file_str = conf_file_str + conf_file_item;
     });
     conf_file_str = conf_file_str + '}';
-    // console.log(conf_file_str)
     return conf_file_str;
 };

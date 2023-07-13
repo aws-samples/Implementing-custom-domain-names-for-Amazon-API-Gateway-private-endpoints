@@ -67,7 +67,7 @@ export class NetworkingConstruct extends Construct {
                     'EXTERNAL_VPC_ID value is required when CREATE_VPC is false. Check ReadMe.md for detailed instructions',
                 );
             this.vpc = ec2.Vpc.fromLookup(this, `${stackName}-vpc`, {
-                vpcId: vpcId!,
+                vpcId: vpcId as string,
             }) as ec2.Vpc;
         }
 
@@ -255,22 +255,18 @@ export class NetworkingConstruct extends Construct {
             });
 
             // Create Interface Endpoint for ecr-dkr
-            const ecrDkrVPCInterfaceEndpoint = new ec2.InterfaceVpcEndpoint(
-                this,
-                `${stackName}-ecr-dkr-interface-endpoint`,
-                {
-                    vpc: this.vpc,
-                    service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
-                    securityGroups: [
-                        this.endpointSG,
-                        // defaultSG
-                    ],
-                    privateDnsEnabled: true,
-                },
-            );
+            new ec2.InterfaceVpcEndpoint(this, `${stackName}-ecr-dkr-interface-endpoint`, {
+                vpc: this.vpc,
+                service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
+                securityGroups: [
+                    this.endpointSG,
+                    // defaultSG
+                ],
+                privateDnsEnabled: true,
+            });
 
             // Create Interface Endpoint for S3
-            const s3Gateway = new ec2.GatewayVpcEndpoint(this, `${stackName}-s3-gateway-endpoint`, {
+            new ec2.GatewayVpcEndpoint(this, `${stackName}-s3-gateway-endpoint`, {
                 vpc: this.vpc,
                 service: ec2.GatewayVpcEndpointAwsService.S3,
             });
@@ -336,6 +332,5 @@ export class NetworkingConstruct extends Construct {
     }
     _error(msg: string) {
         throw new Error(msg);
-        return '';
     }
 }

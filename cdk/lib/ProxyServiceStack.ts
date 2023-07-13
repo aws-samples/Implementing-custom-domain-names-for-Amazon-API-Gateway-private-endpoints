@@ -1,6 +1,5 @@
 import { Construct } from 'constructs';
-import { CfnOutput, Duration, Stack, StackProps } from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
 import { proxyDomain, elbTypeEnum } from '../bin/Main';
 import { FargateServiceConstruct } from './FargateService';
 import { NetworkingConstruct } from './Networking';
@@ -77,6 +76,5 @@ export class ProxyServiceStack extends Stack {
     }
     _error(msg: string) {
         throw new Error(msg);
-        return '';
     }
 }

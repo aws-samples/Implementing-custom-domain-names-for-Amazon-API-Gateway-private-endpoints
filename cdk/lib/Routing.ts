@@ -1,4 +1,4 @@
-import { CfnOutput, Stack, Token } from 'aws-cdk-lib';
+import { Stack } from 'aws-cdk-lib';
 import * as aws_cert from 'aws-cdk-lib/aws-certificatemanager';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as alb from 'aws-cdk-lib/aws-elasticloadbalancingv2';

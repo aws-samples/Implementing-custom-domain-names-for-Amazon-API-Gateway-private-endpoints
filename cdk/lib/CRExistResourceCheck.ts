@@ -1,6 +1,5 @@
 import * as ec2 from '@aws-sdk/client-ec2';
 import {
-    CloudFormationCustomResourceCreateEvent,
     CloudFormationCustomResourceEvent,
     CloudFormationCustomResourceUpdateEvent,
     CloudFormationCustomResourceDeleteEvent,
@@ -19,7 +18,7 @@ const interfaceEndpoints = ['execute-api', 'ecr.api', 'logs', 'ecr.dkr', 's3'];
 
 const client = new ec2.EC2Client({});
 
-export const handler = async (event: CloudFormationCustomResourceEvent, context: any) => {
+export const handler = async (event: CloudFormationCustomResourceEvent) => {
     console.log('event', event);
 
     let endpointsCreated: IEndpointsCreated;
@@ -28,8 +27,7 @@ export const handler = async (event: CloudFormationCustomResourceEvent, context:
 
     try {
         const {
-            RequestType,
-            ResourceProperties: { vpcId, externalPrivateSubnetIds, ExternalFargateSg, ExternalEndpointSg },
+            ResourceProperties: { vpcId, externalPrivateSubnetIds, ExternalEndpointSg },
         } = event;
 
         const physicalResourceID =
@@ -44,8 +42,6 @@ export const handler = async (event: CloudFormationCustomResourceEvent, context:
             executeAPIVpcEndpointId = endpointsCreated['execute-api'].endpointId;
 
             console.log(`executeAPIVpcEndpointId--->${executeAPIVpcEndpointId}`);
-
-            // const endpointsCreatedIds = Object.entries( endpointsCreated ).filter( ( [ key, value ] ) => value.isCreated ).map( ( [ key, value ] ) => value.endpointId )
 
             if (event.RequestType === 'Update' && physicalResourceID) {
                 const vpcEndPoints = JSON.parse(event.PhysicalResourceId) as IEndpointsCreated;
@@ -65,8 +61,8 @@ export const handler = async (event: CloudFormationCustomResourceEvent, context:
             const endPointsCreated = JSON.parse(event.PhysicalResourceId) as IEndpointsCreated;
 
             const endpointsCreatedIds = Object.entries(endPointsCreated)
-                .filter(([key, value]) => value.isCreated)
-                .map(([key, value]) => value.endpointId);
+                .filter(([, value]) => value.isCreated)
+                .map(([, value]) => value.endpointId);
 
             for (const interfaceEndpointId of endpointsCreatedIds) {
                 const command = new ec2.DeleteVpcEndpointsCommand({
@@ -96,7 +92,7 @@ export const handler = async (event: CloudFormationCustomResourceEvent, context:
         console.error(error);
         return {
             Status: 'FAILED',
-            Reason: (error as any).message,
+            Reason: (error as Error).message,
             Data: {
                 EndpointId: '',
             },
@@ -112,7 +108,6 @@ const handleCreateOrUpdate = async (
     externalPrivateSubnetIds: string[],
     externalEndpointSg: string,
 ): Promise<IEndpointsCreated> => {
-    const endpointId: string | undefined = '';
     const command = new ec2.DescribeVpcEndpointsCommand({
         Filters: [
             {
@@ -127,7 +122,7 @@ const handleCreateOrUpdate = async (
 
     for (const interfaceEndpoint of interfaceEndpoints) {
         const endpointFound = vpcEndpoints.VpcEndpoints?.find(
-            (endpoint: any) =>
+            (endpoint: ec2.VpcEndpoint) =>
                 endpoint.ServiceName === `com.amazonaws.${region}.${interfaceEndpoint}` &&
                 (endpoint.State === 'available' || endpoint.State === 'pending'),
         );
@@ -216,7 +211,7 @@ const createEndpoint = async (
 
     const endpointResponse = await client.send(command);
 
-    return endpointResponse.VpcEndpoint?.VpcEndpointId!;
+    return endpointResponse.VpcEndpoint?.VpcEndpointId;
 };
 
 const getPrivateRouteTableIds = async (
@@ -239,24 +234,4 @@ const getPrivateRouteTableIds = async (
     const routeTablesResponse: ec2.DescribeRouteTablesCommandOutput = await client.send(commandRouteTable);
 
     return routeTablesResponse.RouteTables?.map((route) => route.RouteTableId!);
-};
-const getPrivateSubnets = async (vpcId: string): Promise<string[] | undefined> => {
-    // Get private subnets
-    const describeSubnetsParams = new ec2.DescribeSubnetsCommand({
-        Filters: [
-            {
-                Name: 'vpc-id',
-                Values: [vpcId],
-            },
-        ],
-    });
-
-    const subnetsResponse: ec2.DescribeSubnetsCommandOutput = await client.send(describeSubnetsParams);
-    const subnetsMapPublicFalse = subnetsResponse.Subnets?.filter((subnet) => {
-        return subnet.MapPublicIpOnLaunch === false;
-    });
-
-    // const privateRoutes = await getPrivateRouteTableIds( vpcId )
-
-    return subnetsResponse.Subnets?.map((subnet) => subnet.SubnetId!);
 };

@@ -1,10 +1,5 @@
 import * as ec2 from '@aws-sdk/client-ec2';
-import {
-    CloudFormationCustomResourceCreateEvent,
-    CloudFormationCustomResourceEvent,
-    CloudFormationCustomResourceUpdateEvent,
-    CloudFormationCustomResourceDeleteEvent,
-} from 'aws-lambda';
+import { CloudFormationCustomResourceEvent } from 'aws-lambda';
 
 const region = process.env.AWS_REGION;
 const client = new ec2.EC2Client({});
@@ -77,7 +72,7 @@ export const handler = async (event: CloudFormationCustomResourceEvent) => {
         console.error(error);
         return {
             Status: 'FAILED',
-            Reason: (error as any).message,
+            Reason: (error as Error).message,
             Data: {
                 EndpointId: '',
             },

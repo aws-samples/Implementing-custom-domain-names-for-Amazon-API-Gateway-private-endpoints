@@ -3,14 +3,13 @@ import * as Path from 'path';
 import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cr from 'aws-cdk-lib/custom-resources';
-import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
-import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 import { ApplicationTargetGroup, NetworkTargetGroup } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { proxyDomain } from '../bin/Main';
@@ -42,7 +41,6 @@ export class FargateServiceConstruct extends Construct {
         // the role assumed by the task and its containers
         const taskRole = new iam.Role(this, `${stackName}-task-role`, {
             assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-            //roleName: "task-role",
             description: 'Role that the api task definitions use to run the api code',
         });
 
@@ -145,7 +143,6 @@ export class FargateServiceConstruct extends Construct {
 
         // The ECS Service used for deploying tasks
         const service = new ecs.FargateService(this, `${stackName}-fargate-service`, {
-            // enableExecuteCommand: true,
             platformVersion: ecs.FargatePlatformVersion.LATEST,
             cluster: cluster,
             desiredCount: 1,
@@ -156,7 +153,6 @@ export class FargateServiceConstruct extends Construct {
             },
         });
 
-        //  service.attachToApplicationTargetGroup( props.albTG )
         if (props.elbType === elbTypeEnum.NLB) {
             service.attachToNetworkTargetGroup(props.targetGroup as NetworkTargetGroup);
         } else {
@@ -167,12 +163,6 @@ export class FargateServiceConstruct extends Construct {
             minCapacity: props.taskScaleMin,
             maxCapacity: props.taskScaleMax,
         });
-
-        // Scale in or out based on request received
-        // scalableTaskCountObject.scaleOnRequestCount( `${ stackName }-scaleonrequestcount`, {
-        //     requestsPerTarget: 100,
-        //     targetGroup: props.albTG
-        // } )
 
         scalableTaskCountObject.scaleOnCpuUtilization(id, {
             targetUtilizationPercent: props.taskScaleCpuPercentage,
