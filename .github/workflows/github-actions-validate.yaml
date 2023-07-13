@@ -72,9 +72,9 @@ jobs:
         id: prettier
         working-directory: ${{ env.working-directory }}
         run: |
-          prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"
+          npm run format
       - name: Lint
         id: eslint
         working-directory: ${{ env.working-directory }}        
         run: |
-          eslint --ext .js,.ts .
+          npm run lint
