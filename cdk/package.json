@@ -8,7 +8,9 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "npx cdk"
+    "cdk": "npx cdk",
+    "lint": "eslint --ext .js,.ts .",     
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\""
   },
   "devDependencies": {
     "@aws-sdk/client-ec2": "3.264.0",
