@@ -41,12 +41,7 @@ const taskScaleCpuPercentage: number = Number(process.env.TASK_SCALE_MAX || '80'
 const Main = () => {
     const app = new cdk.App();
     cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
-    console.table(proxyDomains, [
-        'CUSTOM_DOMAIN_URL',
-        'PRIVATE_API_URL',
-        'VERBS',
-        // "PUBLIC_ZONE_ID",
-    ]);
+    console.table(proxyDomains, ['CUSTOM_DOMAIN_URL', 'PRIVATE_API_URL', 'VERBS']);
 
     const mainStack = new ProxyServiceStack(app, `${appName}-${environment}`, {
         env: {

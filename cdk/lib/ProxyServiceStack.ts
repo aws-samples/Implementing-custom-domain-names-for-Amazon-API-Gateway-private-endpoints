@@ -4,6 +4,7 @@ import { proxyDomain, elbTypeEnum } from '../bin/Main';
 import { FargateServiceConstruct } from './FargateService';
 import { NetworkingConstruct } from './Networking';
 import { RoutingConstruct } from './Routing';
+import { NagSuppressions } from 'cdk-nag';
 
 type ProxyServiceStackProps = {
     proxyDomains: proxyDomain[];
@@ -73,6 +74,28 @@ export class ProxyServiceStack extends Stack {
         new CfnOutput(this, 'api_gateway_vpce_id', {
             value: networkingObject.apiGatewayVPCInterfaceEndpointId,
         });
+        NagSuppressions.addResourceSuppressions(
+            this,
+            [
+                {
+                    id: 'AwsSolutions-IAM4',
+                    reason: 'The task role requires the resource wildcard for functionality',
+                    appliesTo: [
+                        'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
+                    ],
+                },
+                {
+                    id: 'AwsSolutions-IAM5',
+                    reason: 'The task role requires the resource wildcard for functionality',
+                    appliesTo: [
+                        'Resource::<reverseproxyDevfargateservicereverseproxyDevcrFninterfaceDNS898D1FFA.Arn>:*',
+                    ],
+                
+                },
+            ],
+            true,
+        );
+
     }
     _error(msg: string) {
         throw new Error(msg);

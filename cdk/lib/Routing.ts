@@ -7,6 +7,7 @@ import { LoadBalancerTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import { proxyDomain, elbTypeEnum } from '../bin/Main';
+import { NagSuppressions } from 'cdk-nag';
 
 type RoutingProps = {
     vpc: ec2.Vpc;
@@ -203,5 +204,23 @@ export class RoutingConstruct extends Construct {
             this.targetGroup = targetGroupHttps;
             this.elbDns = `dualstack.${loadBalancer.loadBalancerDnsName}`;
         }
+        NagSuppressions.addResourceSuppressions(
+            this,
+            [
+                {
+                    id: 'AwsSolutions-ELB2',
+                    reason: 'This is designed to be a minimal solution, logging would add complexity and resources.  Users can enable access logging if required.',
+                },
+                {
+                    id: 'AwsSolutions-IAM4',
+                    reason: 'The task role requires the resource wildcard for functionality',
+                    appliesTo: [
+                        'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
+                    ],
+                },
+
+            ],
+            true,
+        );
     }
 }

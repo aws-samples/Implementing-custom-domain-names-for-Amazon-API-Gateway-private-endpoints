@@ -3,3 +3,4 @@ config/*.yaml
 outputs/*
 .vscode/*
 tfsec-*
+**/.DS_Store

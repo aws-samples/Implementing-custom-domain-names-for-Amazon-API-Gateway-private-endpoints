@@ -4,9 +4,8 @@ import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as cr from 'aws-cdk-lib/custom-resources';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Effect } from 'aws-cdk-lib/aws-iam';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -95,6 +94,34 @@ export class NetworkingConstruct extends Construct {
             cdk.Tags.of(this.fgSG).add('Name', 'fargate-sg');
             console.log(`Create Fargate SG`);
 
+            const prefixListsRole = new iam.Role(this, 'prefixListsRole', {
+                assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+                inlinePolicies: {
+                    prefixListsPolicy: new iam.PolicyDocument({
+                        statements: [
+                            new iam.PolicyStatement({
+                                actions: [
+                                    'ec2:DescribePrefixLists',
+                                    'ec2:DescribeMangedPrefixLists',
+                                    'ec2:GetManagedPrefixListEntries',
+                                ],
+                                resources: [
+                                    // eslint-disable-next-line prettier/prettier
+                                    `arn:${cdk.Stack.of(this).partition}:ec2:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:prefix-list/*`,
+                                    `arn:${cdk.Stack.of(this).partition}:ec2:${
+                                        cdk.Stack.of(this).region
+                                    }:aws:prefix-list/*`,
+                                ],
+                            }),
+                            new iam.PolicyStatement({
+                                actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+                                resources: ['*'],
+                            }),
+                        ],
+                    }),
+                },
+            });
+
             // Get S3 Gateway Endpoint Prefix Lists from Custom Resource
             const prefixLists = new cr.AwsCustomResource(this, `${stackName}-prefixLists`, {
                 onCreate: {
@@ -123,9 +150,7 @@ export class NetworkingConstruct extends Construct {
                     },
                     physicalResourceId: {},
                 },
-                policy: cr.AwsCustomResourcePolicy.fromSdkCalls({
-                    resources: cr.AwsCustomResourcePolicy.ANY_RESOURCE,
-                }),
+                role: prefixListsRole,
                 logRetention: cdk.aws_logs.RetentionDays.ONE_MONTH,
             });
 
@@ -300,34 +325,64 @@ export class NetworkingConstruct extends Construct {
             }
             console.log(`extPrivateSubnetIds--->${extPrivateSubnetIds}`);
 
+            const customResourceLambdaRole = new iam.Role(this, `${stackName}-CustomResource-Role`, {
+                assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+                description:
+                    'Role that the custom resource uses to run the lambda function and get vpc endpoint information',
+                inlinePolicies: {
+                    'lambda-inline-policy': new iam.PolicyDocument({
+                        statements: [
+                            new iam.PolicyStatement({
+                                effect: Effect.ALLOW,
+                                actions: [
+                                    'logs:CreateLogGroup',
+                                    'logs:CreateLogStream',
+                                    'logs:PutLogEvents',
+                                    'ec2:DescribeVpcEndpoints',
+                                    'ec2:CreateVpcEndpoint',
+                                    'ec2:DeleteVpcEndpoints',
+                                    'ec2:UpdateVpcEndpoint',
+                                    'ec2:DescribeRouteTables',
+                                ],
+                                resources: ['*'],
+                            }),
+                        ],
+                    }),
+                },
+            });
+
             const customResourceLambda = new NodejsFunction(this, `${stackName}-CustomResource-Fn`, {
                 entry: Path.join(__dirname, 'CRExistResourceCheck.ts'),
                 functionName: `${stackName}-cr-get-vpc-endpoints`,
-                runtime: lambda.Runtime.NODEJS_18_X,
+                role: customResourceLambdaRole,
                 timeout: Duration.minutes(5),
+                runtime: cdk.aws_lambda.Runtime.NODEJS_18_X,
                 bundling: {
                     externalModules: ['@aws-sdk/client-ec2'],
                 },
             });
 
-            const lambdaPolicy = new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: [
-                    'ec2:DescribeVpcEndpoints',
-                    'ec2:CreateVpcEndpoint',
-                    'ec2:DeleteVpcEndpoints',
-                    'ec2:UpdateVpcEndpoint',
-                    'ec2:DescribeRouteTables',
-                ],
-                resources: ['*'],
+            // create an iam role for the lambda function
+            const customResourceProviderRole = new iam.Role(this, `${stackName}-customResourceProvider-role`, {
+                assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+                description: 'Role that the custom resource uses to run the lambda function',
+                inlinePolicies: {
+                    'lambda-inline-policy': new iam.PolicyDocument({
+                        statements: [
+                            new iam.PolicyStatement({
+                                effect: Effect.ALLOW,
+                                actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+                                resources: ['*'],
+                            }),
+                        ],
+                    }),
+                },
             });
-
-            customResourceLambda.addToRolePolicy(lambdaPolicy);
-
             // Create a custom resource provider which wraps around the lambda above
             const customResourceProvider = new cr.Provider(this, `${stackName}-CRProvider`, {
                 onEventHandler: customResourceLambda,
                 logRetention: RetentionDays.FIVE_DAYS,
+                role: customResourceProviderRole,
                 // totalTimeout: Duration.minutes(5),
             });
 
@@ -345,18 +400,43 @@ export class NetworkingConstruct extends Construct {
             this.apiGatewayVPCInterfaceEndpointId = objCustomResource.getAtt('executeAPIVpcEndpointId').toString();
         }
         NagSuppressions.addResourceSuppressions(
-            prefixLists,
+            this,
             [
                 {
                     id: 'AwsSolutions-IAM5',
                     reason: 'The lambda function requires the resource wildcard for functionality',
                     appliesTo: [
-                        'Action::ec2:DescribeVpcEndpoints',
-                        'Action::ec2:CreateVpcEndpoint',
-                        'Action::ec2:DeleteVpcEndpoints',
-                        'Action::ec2:UpdateVpcEndpoint',
-                        'Action::ec2:DescribeRouteTables',
+                        // eslint-disable-next-line prettier/prettier
+                        `Resource::arn:<AWS::Partition>:ec2:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:prefix-list/*`,
+                        `Resource::arn:<AWS::Partition>:ec2:${cdk.Stack.of(this).region}:aws:prefix-list/*`,
                         'Action::ec2:DescribePrefixLists',
+                        'Action::ec2:DescribeMangedPrefixLists',
+                        'Action::ec2:GetManagedPrefixListEntries',
+                    ],
+                },
+                {
+                    id: 'AwsSolutions-IAM5',
+                    reason: 'The lambda function requires the resource wildcard for functionality',
+                    appliesTo: [
+                        'Action::logs:CreateLogGroup',
+                        'Action::logs:CreateLogStream',
+                        'Action::logs:PutLogEvents',
+                        'Resource::*',
+                    ],
+                },
+                {
+                    id: 'CdkNagValidationFailure',
+                    reason: 'Rendered template references intrisic function',
+                },
+                {
+                    id: 'AwsSolutions-L1',
+                    reason: 'Rule incorrectly identifies the latest version, this is a false finding',
+                },
+                {
+                    id: 'AwsSolutions-IAM4',
+                    reason: 'The task role requires the resource wildcard for functionality',
+                    appliesTo: [
+                        'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
                     ],
                 },
             ],

@@ -8,7 +8,6 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cr from 'aws-cdk-lib/custom-resources';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 import { ApplicationTargetGroup, NetworkTargetGroup } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
@@ -37,6 +36,7 @@ export class FargateServiceConstruct extends Construct {
         // cluster to deploy resources to
         const cluster = new ecs.Cluster(this, `${stackName}-cluster`, {
             vpc: props.vpc,
+            containerInsights: true,
         });
 
         // the role assumed by the task and its containers
@@ -69,7 +69,6 @@ export class FargateServiceConstruct extends Construct {
             }),
         );
 
-
         const taskDefinition = new ecs.FargateTaskDefinition(this, `${stackName}-task`, {
             cpu: 512,
             memoryLimitMiB: 1024,
@@ -84,25 +83,43 @@ export class FargateServiceConstruct extends Construct {
         const customResourceLambda = new NodejsFunction(this, `${stackName}-crFn-interfaceDNS`, {
             entry: Path.join(__dirname, 'CRGetVPCEndpointDNS.ts'),
             functionName: `${stackName}-cr-get-vpc-endpoints-dns`,
-            runtime: Runtime.NODEJS_18_X,
+            runtime: cdk.aws_lambda.Runtime.NODEJS_18_X,
+            initialPolicy: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['ec2:DescribeVpcEndpoints'],
+                    resources: ['*'],
+                }),
+            ],
+
             bundling: {
                 externalModules: ['@aws-sdk/client-ec2'],
             },
             timeout: cdk.Duration.minutes(5),
         });
 
-        const lambdaPolicy = new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['ec2:DescribeVpcEndpoints'],
-            resources: ['*'],
+        // create an iam role for the lambda function
+        const customResourceProviderRole = new iam.Role(this, `${stackName}-customResourceProvider-role`, {
+            assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+            description: 'Role that the custom resource uses to run the lambda function',
+            inlinePolicies: {
+                'lambda-inline-policy': new iam.PolicyDocument({
+                    statements: [
+                        new iam.PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+                            resources: ['*'],
+                        }),
+                    ],
+                }),
+            },
         });
-
-        customResourceLambda.addToRolePolicy(lambdaPolicy);
 
         // Create a custom resource provider which wraps around the lambda above
         const customResourceProvider = new cr.Provider(this, `${stackName}-CRProvider-interfaceDNS`, {
             onEventHandler: customResourceLambda,
             logRetention: logs.RetentionDays.FIVE_DAYS,
+            role: customResourceProviderRole,
         });
 
         // Create a new custom resource consumer
@@ -183,6 +200,23 @@ export class FargateServiceConstruct extends Construct {
                         'Action::ecr:BatchGetImage',
                         'Action::logs:CreateLogStream',
                         'Action::logs:PutLogEvents',
+                        'Action::ec2:DescribeVpcEndpoints',
+                        'Resource::*',
+                    ],
+                },
+                {
+                    id: 'AwsSolutions-ECS2',
+                    reason: 'No sensitive data is stored in the example environment variables, users can migrate data to secrets if needed',
+                },
+                {
+                    id: 'AwsSolutions-L1',
+                    reason: 'Rule incorrectly identifies the latest version, this is a false finding',
+                },
+                {
+                    id: 'AwsSolutions-IAM4',
+                    reason: 'The task role requires the resource wildcard for functionality',
+                    appliesTo: [
+                        'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
                     ],
                 },
             ],
