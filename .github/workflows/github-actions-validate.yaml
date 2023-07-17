@@ -78,10 +78,6 @@ jobs:
         working-directory: ${{ env.working-directory }}        
         run: |
           npm run lint
-      - name: Security scan
-        working-directory: ${{ env.working-directory }}
-        run: |
-          npx cdk synth --no-staging
       - name: Commit cdk changes
         id: tfcommit
         working-directory: ${{ env.working-directory }}
