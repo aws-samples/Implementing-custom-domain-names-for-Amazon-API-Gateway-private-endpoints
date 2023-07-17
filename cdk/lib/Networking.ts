@@ -107,7 +107,9 @@ export class NetworkingConstruct extends Construct {
                                 ],
                                 resources: [
                                     // eslint-disable-next-line prettier/prettier
-                                    `arn:${cdk.Stack.of(this).partition}:ec2:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:prefix-list/*`,
+                                    `arn:${cdk.Stack.of(this).partition}:ec2:${cdk.Stack.of(this).region}:${
+                                        cdk.Stack.of(this).account
+                                    }:prefix-list/*`,
                                     `arn:${cdk.Stack.of(this).partition}:ec2:${
                                         cdk.Stack.of(this).region
                                     }:aws:prefix-list/*`,
@@ -413,7 +415,9 @@ export class NetworkingConstruct extends Construct {
                     reason: 'The lambda function requires the resource wildcard for functionality',
                     appliesTo: [
                         // eslint-disable-next-line prettier/prettier
-                        `Resource::arn:<AWS::Partition>:ec2:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:prefix-list/*`,
+                        `Resource::arn:<AWS::Partition>:ec2:${cdk.Stack.of(this).region}:${
+                            cdk.Stack.of(this).account
+                        }:prefix-list/*`,
                         `Resource::arn:<AWS::Partition>:ec2:${cdk.Stack.of(this).region}:aws:prefix-list/*`,
                         'Action::ec2:DescribePrefixLists',
                         'Action::ec2:DescribeMangedPrefixLists',

@@ -90,12 +90,10 @@ export class ProxyServiceStack extends Stack {
                     appliesTo: [
                         'Resource::<reverseproxyDevfargateservicereverseproxyDevcrFninterfaceDNS898D1FFA.Arn>:*',
                     ],
-                
                 },
             ],
             true,
         );
-
     }
     _error(msg: string) {
         throw new Error(msg);
