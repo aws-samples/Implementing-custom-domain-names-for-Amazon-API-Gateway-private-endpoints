@@ -211,14 +211,6 @@ export class RoutingConstruct extends Construct {
                     id: 'AwsSolutions-ELB2',
                     reason: 'This is designed to be a minimal solution, logging would add complexity and resources.  Users can enable access logging if required.',
                 },
-                {
-                    id: 'AwsSolutions-IAM4',
-                    reason: 'The task role requires the resource wildcard for functionality',
-                    appliesTo: [
-                        'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-                    ],
-                },
-
             ],
             true,
         );

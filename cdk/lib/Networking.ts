@@ -362,6 +362,11 @@ export class NetworkingConstruct extends Construct {
                 },
             });
 
+            new logs.LogGroup(this, `${stackName}-CustomResource-LogGroup`, {
+                logGroupName: `/aws/lambda/${customResourceLambda.functionName}`,
+                retention: RetentionDays.FIVE_DAYS,
+            });
+
             // create an iam role for the lambda function
             const customResourceProviderRole = new iam.Role(this, `${stackName}-customResourceProvider-role`, {
                 assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -378,6 +383,7 @@ export class NetworkingConstruct extends Construct {
                     }),
                 },
             });
+
             // Create a custom resource provider which wraps around the lambda above
             const customResourceProvider = new cr.Provider(this, `${stackName}-CRProvider`, {
                 onEventHandler: customResourceLambda,
@@ -428,17 +434,18 @@ export class NetworkingConstruct extends Construct {
                     id: 'CdkNagValidationFailure',
                     reason: 'Rendered template references intrisic function',
                 },
-                {
-                    id: 'AwsSolutions-L1',
-                    reason: 'Rule incorrectly identifies the latest version, this is a false finding',
-                },
-                {
-                    id: 'AwsSolutions-IAM4',
-                    reason: 'The task role requires the resource wildcard for functionality',
-                    appliesTo: [
-                        'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-                    ],
-                },
+                // {
+                //     id: 'AwsSolutions-IAM5',
+                //     reason: 'The custom resource wrappers create a lambda function that requires the resource wildcard for the listed actions to set log retention.',
+                //     appliesTo: [
+                //         'Action::logs:DeleteRetentionPolicy',
+                //         'Action::logs:CreateLogStream',
+                //         'Action::logs:PutLogEvents',
+                //         'Action::logs:CreateLogGroup',
+                //         'Action::logs:PutRetentionPolicy',
+                //         'Resource::*',
+                //     ],
+                // },
             ],
             true,
         );

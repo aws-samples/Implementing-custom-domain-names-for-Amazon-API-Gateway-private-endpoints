@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import { ProxyServiceStack } from '../lib/ProxyServiceStack';
 import { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import { AwsSolutionsChecks } from 'cdk-nag';
+import { NagSuppressions } from 'cdk-nag';
 
 export type proxyDomain = {
     // TLD: string,
@@ -66,6 +67,21 @@ const Main = () => {
 
     cdk.Tags.of(mainStack).add('App', appName);
     cdk.Tags.of(mainStack).add('Environment', environment);
+    NagSuppressions.addResourceSuppressions(
+        app,
+        [
+            {
+                id: 'AwsSolutions-L1',
+                reason: 'Rule incorrectly identifies the latest version, this is a false finding',
+            },
+            {
+                id: 'AwsSolutions-IAM5',
+                reason: 'The custom resource wrappers create a lambda function that requires the resource wildcard for the listed actions to set log retention.',
+                appliesTo: ['Action::logs:DeleteRetentionPolicy', 'Action::logs:PutRetentionPolicy', 'Resource::*'],
+            },
+        ],
+        true,
+    );
 };
 
 Main();

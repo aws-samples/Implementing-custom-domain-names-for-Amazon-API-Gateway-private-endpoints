@@ -9,6 +9,8 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cr from 'aws-cdk-lib/custom-resources';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { Architecture } from 'aws-cdk-lib/aws-lambda';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
 
 import { ApplicationTargetGroup, NetworkTargetGroup } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { proxyDomain } from '../bin/Main';
@@ -83,7 +85,8 @@ export class FargateServiceConstruct extends Construct {
         const customResourceLambda = new NodejsFunction(this, `${stackName}-crFn-interfaceDNS`, {
             entry: Path.join(__dirname, 'CRGetVPCEndpointDNS.ts'),
             functionName: `${stackName}-cr-get-vpc-endpoints-dns`,
-            runtime: cdk.aws_lambda.Runtime.NODEJS_18_X,
+            architecture: Architecture.ARM_64,
+            runtime: Runtime.NODEJS_18_X,
             initialPolicy: [
                 new PolicyStatement({
                     effect: Effect.ALLOW,
@@ -118,7 +121,7 @@ export class FargateServiceConstruct extends Construct {
         // Create a custom resource provider which wraps around the lambda above
         const customResourceProvider = new cr.Provider(this, `${stackName}-CRProvider-interfaceDNS`, {
             onEventHandler: customResourceLambda,
-            logRetention: logs.RetentionDays.FIVE_DAYS,
+            // logRetention: logs.RetentionDays.FIVE_DAYS,
             role: customResourceProviderRole,
         });
 
@@ -192,32 +195,19 @@ export class FargateServiceConstruct extends Construct {
             [
                 {
                     id: 'AwsSolutions-IAM5',
-                    reason: 'The task role requires the resource wildcard for functionality',
+                    reason: 'The custom resource wrappers create a lambda function that requires the resource wildcard for the listed actions to set log retention.',
                     appliesTo: [
-                        'Action::ecr:GetAuthorizationToken',
-                        'Action::ecr:BatchCheckLayerAvailability',
-                        'Action::ecr:GetDownloadUrlForLayer',
-                        'Action::ecr:BatchGetImage',
+                        'Action::logs:DeleteRetentionPolicy',
                         'Action::logs:CreateLogStream',
                         'Action::logs:PutLogEvents',
-                        'Action::ec2:DescribeVpcEndpoints',
+                        'Action::logs:CreateLogGroup',
+                        'Action::logs:PutRetentionPolicy',
                         'Resource::*',
                     ],
                 },
                 {
                     id: 'AwsSolutions-ECS2',
                     reason: 'No sensitive data is stored in the example environment variables, users can migrate data to secrets if needed',
-                },
-                {
-                    id: 'AwsSolutions-L1',
-                    reason: 'Rule incorrectly identifies the latest version, this is a false finding',
-                },
-                {
-                    id: 'AwsSolutions-IAM4',
-                    reason: 'The task role requires the resource wildcard for functionality',
-                    appliesTo: [
-                        'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-                    ],
                 },
             ],
             true,
