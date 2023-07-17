@@ -80,4 +80,4 @@ jobs:
           ref: ${{ github.ref_name }}
       - name: Install tools
         run: |
-          find . -type f -executable -not -path "./.git" -print0 | xargs -0L1 shellcheck
+          find . \( ! -regex '\./\.git/.*' \)  -type f -executable -print0 | xargs -0L1 shellcheck
