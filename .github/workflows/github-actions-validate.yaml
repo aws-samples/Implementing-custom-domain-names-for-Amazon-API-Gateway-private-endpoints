@@ -1,9 +1,9 @@
 name: Validate and Format
 run-name: "${{ github.actor }} pushed to ${{ github.ref_name }}"
 on:
-  push:
+  pull_request:
     branches: 
-       - 27-add-pre-merge-checks
+       - main
 permissions:
   contents: write
 jobs:
@@ -78,6 +78,6 @@ jobs:
         uses: actions/checkout@v3.5.3
         with:
           ref: ${{ github.ref_name }}
-      - name: Install tools
+      - name: ShellCheck
         run: |
           find . \( ! -regex '\./\.git/.*' \)  -type f -executable -print0 | xargs -0L1 shellcheck
