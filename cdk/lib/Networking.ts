@@ -107,12 +107,9 @@ export class NetworkingConstruct extends Construct {
                                 ],
                                 resources: [
                                     // eslint-disable-next-line prettier/prettier
-                                    `arn:${cdk.Stack.of(this).partition}:ec2:${cdk.Stack.of(this).region}:${
-                                        cdk.Stack.of(this).account
-                                    }:prefix-list/*`,
-                                    `arn:${cdk.Stack.of(this).partition}:ec2:${
-                                        cdk.Stack.of(this).region
-                                    }:aws:prefix-list/*`,
+                                    `arn:${cdk.Stack.of(this).partition}:ec2:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:prefix-list/*`,
+                                    // eslint-disable-next-line prettier/prettier
+                                    `arn:${cdk.Stack.of(this).partition}:ec2:${cdk.Stack.of(this).region}:aws:prefix-list/*`,
                                 ],
                             }),
                             new iam.PolicyStatement({
