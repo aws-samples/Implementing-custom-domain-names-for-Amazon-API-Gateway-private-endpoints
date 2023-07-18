@@ -1,5 +1,5 @@
 name: Validate and Format
-run-name: "${{ github.actor }} pushed to ${{ github.ref_name }}"
+run-name: "${{ github.actor }} pushed to ${{ github.ref }}"
 on:
   pull_request:
     branches: 
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3.5.3
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.ref }}
       - uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0
@@ -50,7 +50,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3.5.3
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.ref }}
 
       - name: CDK Checks
         working-directory: ./cdk
@@ -77,7 +77,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3.5.3
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.ref }}
       - name: ShellCheck
         run: |
           find . \( ! -regex '\./\.git/.*' \)  -type f -executable -print0 | xargs -0L1 shellcheck
