@@ -190,27 +190,37 @@ export class FargateServiceConstruct extends Construct {
             targetUtilizationPercent: props.taskScaleCpuPercentage,
         });
 
-        NagSuppressions.addResourceSuppressions(
-            this,
+        NagSuppressions.addResourceSuppressionsByPath(
+            cdk.Stack.of(this),
+            `${customResourceProviderRole.node.path}/DefaultPolicy/Resource`,
             [
                 {
                     id: 'AwsSolutions-IAM5',
                     reason: 'The custom resource wrappers create a lambda function that requires the resource wildcard for the listed actions to set log retention.',
-                    appliesTo: [
-                        'Action::logs:DeleteRetentionPolicy',
-                        'Action::logs:CreateLogStream',
-                        'Action::logs:PutLogEvents',
-                        'Action::logs:CreateLogGroup',
-                        'Action::logs:PutRetentionPolicy',
-                        'Resource::*',
-                    ],
-                },
-                {
-                    id: 'AwsSolutions-ECS2',
-                    reason: 'No sensitive data is stored in the example environment variables, users can migrate data to secrets if needed',
                 },
             ],
-            true,
-        );
+        ),
+            NagSuppressions.addResourceSuppressions(
+                this,
+                [
+                    {
+                        id: 'AwsSolutions-IAM5',
+                        reason: 'The custom resource wrappers create a lambda function that requires the resource wildcard for the listed actions to set log retention.',
+                        appliesTo: [
+                            'Action::logs:DeleteRetentionPolicy',
+                            'Action::logs:CreateLogStream',
+                            'Action::logs:PutLogEvents',
+                            'Action::logs:CreateLogGroup',
+                            'Action::logs:PutRetentionPolicy',
+                            'Resource::*',
+                        ],
+                    },
+                    {
+                        id: 'AwsSolutions-ECS2',
+                        reason: 'No sensitive data is stored in the example environment variables, users can migrate data to secrets if needed',
+                    },
+                ],
+                true,
+            );
     }
 }
