@@ -4,3 +4,4 @@ outputs/*
 .vscode/*
 tfsec-*
 **/.DS_Store
+*.js
