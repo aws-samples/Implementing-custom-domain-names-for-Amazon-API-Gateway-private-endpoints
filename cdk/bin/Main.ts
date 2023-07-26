@@ -35,9 +35,9 @@ const externalEndpointSgId: string = process.env.EXTERNAL_ENDPOINT_SG_ID || '';
 const taskImage: string =
     (process.env.TASK_IMAGE || 'public.ecr.aws/nginx/nginx') + ':' + (process.env.TASK_IMAGE_TAG || '1.23-alpine-perl');
 const hasPublicSubnets: string = process.env.PUBLIC_SUBNETS || 'false';
-const taskScaleMin: number = Number(process.env.TASK_SCALE_MIN || '1');
-const taskScaleMax: number = Number(process.env.TASK_SCALE_CPU || '4');
-const taskScaleCpuPercentage: number = Number(process.env.TASK_SCALE_MAX || '80');
+const taskScaleMin = Number(process.env.TASK_SCALE_MIN || '1');
+const taskScaleMax = Number(process.env.TASK_SCALE_CPU || '4');
+const taskScaleCpuPercentage = Number(process.env.TASK_SCALE_MAX || '80');
 
 const Main = () => {
     const app = new cdk.App();

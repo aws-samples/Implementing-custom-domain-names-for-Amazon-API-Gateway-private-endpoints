@@ -29,7 +29,9 @@ http {
     #gzip  on;
 
     server {
-      listen 80 default_server;
+      listen 443 default_server ssl;
+      ssl_certificate /cert.pem;
+      ssl_certificate_key /key.pem;
       location / {
         return 200 '<html><body>Private API URL not implemented.</body></html>';
         add_header Content-Type text/html;
@@ -38,7 +40,9 @@ http {
 
     %{ for apiDomain, apiUrl in apis ~}
     server {
-      listen 80;
+      listen 443 ssl;
+      ssl_certificate /cert.pem;
+      ssl_certificate_key /key.pem;
       server_name ${apiDomain};
       location / {
           proxy_set_header X-Upstream-Domain  $server_name;

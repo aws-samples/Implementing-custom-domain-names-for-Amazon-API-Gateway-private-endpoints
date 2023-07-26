@@ -147,7 +147,7 @@ export class FargateServiceConstruct extends Construct {
                     PLATFORM: 'linux/arm64',
                 },
             }),
-            portMappings: [{ containerPort: 80 }],
+            portMappings: [{ containerPort: 443 }],
             logging: ecs.LogDriver.awsLogs({
                 streamPrefix: `${stackName}-fargate-service`,
                 logRetention: logs.RetentionDays.ONE_MONTH,
@@ -157,7 +157,7 @@ export class FargateServiceConstruct extends Construct {
                 API_GATEWAY_VPC_DNS: apiGatewayVPCInterfaceEndpointDNSName,
             },
             healthCheck: {
-                command: ['CMD-SHELL', 'curl http://localhost || exit 1'],
+                command: ['CMD-SHELL', 'curl --cacert /cert.pem https://localhost || exit 1'],
             },
         });
 

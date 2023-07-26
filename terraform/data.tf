@@ -6,7 +6,7 @@ data "aws_availability_zones" "available" {
 data "aws_caller_identity" "current" {}
 
 data "aws_vpc" "selected" {
-  id = var.external_vpc_id == null ? module.vpc[0].vpc_id : var.external_vpc_id
+  id = var.external_vpc_id == null ? module.vpc[0].vpc_id :var.external_vpc_id 
 }
 
 data "aws_partition" "current" {}
