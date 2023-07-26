@@ -34,22 +34,22 @@ module "endpoints" {
   version = "~>3.18.1"
 
   security_group_ids = [data.aws_security_group.endpoints.id]
-  subnet_ids         = local.private_subnets
+  subnet_ids= local.private_subnets
   vpc_id             = data.aws_vpc.selected.id
   endpoints = { for endpoint in local.endpoints : endpoint => {
 
-    create              = lookup(local.endpoint_ids, endpoint, false)
-    service             = endpoint
+    create  = lookup(local.endpoint_ids, endpoint, false)
+    service = endpoint
     private_dns_enabled = endpoint != "s3" ? true : null
-    service_type        = endpoint == "s3" ? "Gateway" : "Interface"
-    route_table_ids     = endpoint == "s3" ? data.aws_route_tables.selected.ids : null
+    service_type = endpoint == "s3" ? "Gateway" : "Interface"
+    route_table_ids = endpoint == "s3" ? data.aws_route_tables.selected.ids : null
     }
   }
 }
 
 
 resource "aws_security_group" "vpc_endpoints" {
-  count       = var.external_endpoint_sg_id == null ? 1 : 0
+  count = var.external_endpoint_sg_id == null ? 1 : 0
   name        = "${local.name_prefix}_vpc_endpoints"
   description = "Ingress to Service Endpoints"
   vpc_id      = local.vpc_id

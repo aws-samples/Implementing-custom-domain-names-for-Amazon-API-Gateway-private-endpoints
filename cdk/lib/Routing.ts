@@ -113,9 +113,9 @@ export class RoutingConstruct extends Construct {
             });
 
             const networkTargetGroupHttps = new alb.NetworkTargetGroup(this, `${stackName}-nlb-target-group`, {
-                port: 80,
+                port: 443,
                 vpc: props.vpc,
-                protocol: alb.Protocol.TCP,
+                protocol: alb.Protocol.TLS,
                 targetType: alb.TargetType.IP,
                 healthCheck: {
                     interval: cdk.Duration.seconds(10),
@@ -123,7 +123,7 @@ export class RoutingConstruct extends Construct {
             });
             networkTargetGroupHttps.configureHealthCheck({
                 path: '/',
-                protocol: alb.Protocol.HTTP,
+                protocol: alb.Protocol.HTTPS,
             });
             const nlbListener = networkLoadBalancer.addListener(`${stackName}-nlb-listener`, {
                 protocol: alb.Protocol.TLS,
@@ -163,16 +163,16 @@ export class RoutingConstruct extends Construct {
 
             // Target group to make resources containers discoverable by the application load balancer
             const targetGroupHttps = new alb.ApplicationTargetGroup(this, `${stackName}-alb-target-group`, {
-                port: 80,
+                port: 443,
                 vpc: props.vpc,
-                protocol: alb.ApplicationProtocol.HTTP,
+                protocol: alb.ApplicationProtocol.HTTPS,
                 targetType: alb.TargetType.IP,
             });
 
             // Health check for containers to check they were deployed correctly
             targetGroupHttps.configureHealthCheck({
                 path: '/',
-                protocol: alb.Protocol.HTTP,
+                protocol: alb.Protocol.HTTPS,
                 interval: cdk.Duration.seconds(5),
                 timeout: cdk.Duration.seconds(2),
             });

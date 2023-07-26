@@ -187,16 +187,16 @@ export class NetworkingConstruct extends Construct {
                     new ec2.Connections({
                         securityGroups: [this.fgSG],
                     }),
-                    ec2.Port.tcp(80),
+                    ec2.Port.tcp(443),
                 );
 
-                this.fgSG.addIngressRule(ec2.Peer.securityGroupId(this.albSG.securityGroupId), ec2.Port.tcp(80));
+                this.fgSG.addIngressRule(ec2.Peer.securityGroupId(this.albSG.securityGroupId), ec2.Port.tcp(443));
 
                 // this.fgSG.connections.allowFrom(
                 //     new ec2.Connections({
                 //         securityGroups: [this.albSG],
                 //     }),
-                //     ec2.Port.tcp(80),
+                //     ec2.Port.tcp(443),
                 // );
 
                 console.log(`Create ALB SG`);
@@ -207,7 +207,7 @@ export class NetworkingConstruct extends Construct {
                     props.externalAlbSgId,
                 ) as ec2.SecurityGroup;
 
-                this.fgSG.addIngressRule(ec2.Peer.securityGroupId(this.albSG.securityGroupId), ec2.Port.tcp(80));
+                this.fgSG.addIngressRule(ec2.Peer.securityGroupId(this.albSG.securityGroupId), ec2.Port.tcp(443));
 
                 console.log(`Found external ALB SG`);
             }
@@ -218,12 +218,12 @@ export class NetworkingConstruct extends Construct {
                 this.privateSubnets.forEach((subnet) => {
                     this.fgSG.addIngressRule(
                         ec2.Peer.ipv4(subnet.ipv4CidrBlock),
-                        ec2.Port.tcp(80),
+                        ec2.Port.tcp(443),
                         'Allow ingress traffic from private subnets CIDR, where network load balancer is hosted to reach Fargate service',
                     );
                 });
             } else {
-                this.fgSG.addIngressRule(ec2.Peer.ipv4(this.vpc.vpcCidrBlock), ec2.Port.tcp(80));
+                this.fgSG.addIngressRule(ec2.Peer.ipv4(this.vpc.vpcCidrBlock), ec2.Port.tcp(443));
             }
         }
 
