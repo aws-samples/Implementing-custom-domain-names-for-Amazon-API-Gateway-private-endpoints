@@ -1,10 +1,13 @@
 import * as url from 'url';
 import * as path from 'path';
 import stringHash = require('string-hash');
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import * as yaml from 'js-yaml';
 import { parse } from 'ts-command-line-args';
 import { proxyDomain } from './bin/Main';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 type IArguments = {
     region: string;
     // account: string
@@ -40,7 +43,7 @@ const GenerateOutputsFile = (props: IArguments, proxyDomains: proxyDomain[]): vo
 
     // console.log( `apiGatewayVPCInterfaceEndpointId--> ${ apiGatewayVPCInterfaceEndpointId }` );
 
-    let outputObj: any = {};
+    const outputObj: any = {};
     outputObj.STACK_OUTPUTS = JSON.parse(props.stackOutputs);
 
     // const arrApis: any[] = []
@@ -109,7 +112,7 @@ const generateSpecificPolicyStatement = (props: IArguments, item: proxyDomain) =
 };
 
 const generateResources = (props: IArguments, item: proxyDomain, policyType: 'deny' | 'allow') => {
-    let resources: string[] = [];
+    const resources: string[] = [];
     // console.log( `${ item.PRIVATE_API_URL.split( 'https://' )[ 1 ].split( '.execute-api' )[ 0 ] }`);
     const api_gateway_id = item.PRIVATE_API_URL.split('https://')[1].split('.execute-api')[0];
     const pathSplit = new url.URL(item.PRIVATE_API_URL).pathname.split('/');
