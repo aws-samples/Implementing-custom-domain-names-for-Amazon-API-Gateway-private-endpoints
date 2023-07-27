@@ -192,6 +192,7 @@ function set_aws_credentials() {
 			break
 			;;
 		"AWS CLI Profile")
+			PS3="Select AWS authentication profile: "
 			profiles=$(aws configure list-profiles)
 			select AWS_PROFILE in ${profiles}; do
 				break
@@ -203,6 +204,10 @@ function set_aws_credentials() {
 	done
 	unset PS3
 
+	if AWS_REGION=$(aws configure get region); then
+	  export AWS_REGION
+	fi
+	
 	if [ -z "${AWS_REGION:-}" ]; then
 		regions="$(aws ec2 describe-regions --region us-east-1 --query 'Regions[].RegionName' --output text 2>/dev/null)"
 
@@ -213,6 +218,7 @@ function set_aws_credentials() {
 		done
 		unset PS3
 	fi
+	
 	export AWS_PROFILE=${AWS_PROFILE:-}
 	export AWS_REGION=${AWS_REGION:-}
 }
