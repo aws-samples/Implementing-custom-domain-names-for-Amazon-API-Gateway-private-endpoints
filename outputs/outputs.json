@@ -1,0 +1,52 @@
+{
+  "STACK_OUTPUTS": [
+    {
+      "OutputKey": "apigatewayvpceid",
+      "OutputValue": "vpce-0ac51eda34643281f"
+    },
+    {
+      "OutputKey": "vpcid",
+      "OutputValue": "vpc-0618262805d4d09f0"
+    },
+    {
+      "OutputKey": "elbdns",
+      "OutputValue": "dualstack.jason-jason-RHPOO8TW5L4K-42ef53b2ec2ff871.elb.us-east-1.amazonaws.com"
+    }
+  ],
+  "API_RESOURCE_POLICY_MAPPING": {
+    "apiid1": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "reverse-proxy-deny",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "execute-api:Invoke",
+          "Resource": [
+            "execute-api:/*/*/*"
+          ],
+          "Condition": {
+            "StringNotEquals": {
+              "aws:SourceVpce": "vpce-0ac51eda34643281f"
+            }
+          }
+        },
+        {
+          "Sid": "reverse-proxy-allow-2298268292",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "execute-api:Invoke",
+          "Resource": [
+            "execute-api:/dev/GET/*",
+            "execute-api:/dev/POST/*"
+          ],
+          "Condition": {
+            "StringEquals": {
+              "aws:Referer": "api1.serverless.jasonend.people.aws.dev"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
