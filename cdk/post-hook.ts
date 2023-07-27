@@ -114,7 +114,7 @@ const generateSpecificPolicyStatement = (props: IArguments, item: proxyDomain) =
 const generateResources = (props: IArguments, item: proxyDomain, policyType: 'deny' | 'allow') => {
     const resources: string[] = [];
     // console.log( `${ item.PRIVATE_API_URL.split( 'https://' )[ 1 ].split( '.execute-api' )[ 0 ] }`);
-    const api_gateway_id = item.PRIVATE_API_URL.split('https://')[1].split('.execute-api')[0];
+    // const api_gateway_id = item.PRIVATE_API_URL.split('https://')[1].split('.execute-api')[0];
     const pathSplit = new url.URL(item.PRIVATE_API_URL).pathname.split('/');
     const stage = pathSplit[1];
     let endPath = '';
