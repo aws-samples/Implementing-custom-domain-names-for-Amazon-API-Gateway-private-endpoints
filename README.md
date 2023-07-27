@@ -328,8 +328,8 @@ This Infrastructure-as-code (IaC) deployment will create the following component
 | Security Group | Ingress/Egress | Source/Destination | Protocol | Port |
 |:-:|:-:|:-:|:-:|:-:|
 |<a id=alb_sg /> ALB[^alb] | Ingress | 0.0.0.0/0 | TCP | 443 |
-| ALB[^alb] | Egress | Fargate Security Group | TCP | 80 |
-| <a id=fg_sg />Fargate | Ingress | ELB Security Group **or** <br/>VIPC CIDR[^elb] | TCP | 80 |
+| ALB[^alb] | Egress | Fargate Security Group | TCP | 443 |
+| <a id=fg_sg />Fargate | Ingress | ELB Security Group **or** <br/>VIPC CIDR[^elb] | TCP | 443 |
 | Fargate | Egress | VPC Endpoint Security Group | TCP | 443 |
 | Fargate | Egress | [AWS Managed S3 Prefix List](https://docs.aws.amazon.com/vpc/latest/userguide/working-with-aws-managed-prefix-lists.html) | TCP | 443 |
 | <a id=vpce_sg />VPC Endpoint | Ingress | VPC CIDR | TCP | 443 |
