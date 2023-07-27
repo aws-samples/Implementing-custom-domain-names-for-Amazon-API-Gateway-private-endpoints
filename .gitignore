@@ -419,3 +419,7 @@ tfsec-checksums.txt
 tfsec-linux-amd64
 ignore
 outputs/
+!cdk/.prettierc.js
+!cdk/.eslintrc.js
+cdk/**/*.js
+cdk/**/*.d.ts
