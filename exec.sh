@@ -281,7 +281,7 @@ if [ "${execution_tool}" == "cdk" ]; then
 	case "${action}" in
 	deploy | synth | synthesize | diff | destroy)
 		pushd "${cdk_dir}" > /dev/null
-			PROXY_DOMAINS=$(ts-node pre-hook.ts --proxyFilePath="${PROXY_CONFIG_PATH}" | jq -c .)
+			PROXY_DOMAINS=$(npx ts-node pre-hook.ts --proxyFilePath="${PROXY_CONFIG_PATH}" | jq -c .)
 			export PROXY_DOMAINS
 
 			# shellcheck disable=SC2086
@@ -292,7 +292,7 @@ if [ "${execution_tool}" == "cdk" ]; then
 				exit $success
 			elif [ "${action}" == "deploy" ]; then
 				STACK_OUTPUTS=$(aws cloudformation describe-stacks --stack-name "${APP_NAME}-${APP_ENVIRONMENT}" --query "Stacks[0].Outputs" --output json | jq -c .)
-				ts-node post-hook.ts --region "${AWS_REGION}" \
+				npx ts-node post-hook.ts --region "${AWS_REGION}" \
 				--proxyFilePath="${PROXY_CONFIG_PATH}" \
 				--destinationPath="${src_dir}/outputs/outputs.json" \
 				--stackOutputs="${STACK_OUTPUTS}"
