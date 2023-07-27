@@ -247,12 +247,12 @@ else
   exit 1
 fi
 
-if ! aws sts get-caller-identity > /dev/null 2>&1; then
+if aws sts get-caller-identity > /dev/null 2>&1; then
+	export AWS_PROFILE=${AWS_PROFILE:-default}
+	export AWS_REGION=${AWS_REGION:-$(aws configure get region)}
+else
 	echo "AWS credentials not set in environment or incorrect, redirecting to provide credentials."
 	set_aws_credentials
-else
-	AWS_PROFILE=${AWS_PROFILE:-default}
-	AWS_REGION=${AWS_REGION:-$(aws configure get region)}
 fi
 
 # CDK Execution
