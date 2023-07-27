@@ -14,6 +14,7 @@ const Run = async () => {
         proxyFilePath: { type: String },
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const yamlOutput: any = yaml.load(readFileSync(path.join(args.proxyFilePath), 'utf8'));
     const proxyDomains: proxyDomain[] = yamlOutput?.APIS as proxyDomain[];
     const publicZonesTotal: route53_sdk.HostedZone[] = await GetPublicZones();
@@ -79,7 +80,7 @@ export const GetPublicZones = async (): Promise<route53_sdk.HostedZone[]> => {
         {},
     );
 
-    let publicZonesTotal: route53_sdk.HostedZone[] = [];
+    const publicZonesTotal: route53_sdk.HostedZone[] = [];
     for await (const data of paginator) {
         const zones = data.HostedZones || [];
         const publicZones = zones.filter((zone) => {
