@@ -16,7 +16,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.9.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.12.0 |
 | <a name="provider_external"></a> [external](#provider\_external) | 2.2.3 |
 | <a name="provider_local"></a> [local](#provider\_local) | 2.2.3 |
 | <a name="provider_null"></a> [null](#provider\_null) | 3.2.1 |
@@ -54,10 +54,16 @@
 | [aws_lb_listener_certificate.load_balancer](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener_certificate) | resource |
 | [aws_route53_record.api](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) | resource |
 | [aws_route53_zone.private](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_zone) | resource |
+| [aws_s3_bucket.truststore](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) | resource |
+| [aws_s3_bucket_public_access_block.truststore](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) | resource |
+| [aws_s3_bucket_server_side_encryption_configuration.truststore](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_server_side_encryption_configuration) | resource |
+| [aws_s3_object.object](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_object) | resource |
 | [aws_security_group.alb](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_security_group.fg](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_security_group.vpc_endpoints](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_security_group_rule.fg_ingress](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule) | resource |
+| [aws_ssm_parameter.certificate_pem](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
+| [aws_ssm_parameter.key_pem](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [local_file.output](https://registry.terraform.io/providers/hashicorp/local/latest/docs/resources/file) | resource |
 | [null_resource.enable_vpc_dns](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [null_resource.proxy_config](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
@@ -85,6 +91,7 @@
 |------|-------------|------|---------|:--------:|
 | <a name="input_app_environment"></a> [app\_environment](#input\_app\_environment) | The Deployment environment | `string` | n/a | yes |
 | <a name="input_app_name"></a> [app\_name](#input\_app\_name) | Application prefix | `string` | n/a | yes |
+| <a name="input_cert_path"></a> [cert\_path](#input\_cert\_path) | n/a | `string` | `null` | no |
 | <a name="input_create_vpc"></a> [create\_vpc](#input\_create\_vpc) | n/a | `bool` | `true` | no |
 | <a name="input_elb_type"></a> [elb\_type](#input\_elb\_type) | Load balancer type [ALB\|NLB] | `string` | `"NLB"` | no |
 | <a name="input_external_alb_sg_id"></a> [external\_alb\_sg\_id](#input\_external\_alb\_sg\_id) | n/a | `string` | `null` | no |
@@ -92,6 +99,7 @@
 | <a name="input_external_fargate_sg_id"></a> [external\_fargate\_sg\_id](#input\_external\_fargate\_sg\_id) | n/a | `string` | `null` | no |
 | <a name="input_external_private_subnets_id"></a> [external\_private\_subnets\_id](#input\_external\_private\_subnets\_id) | n/a | `list(string)` | `[]` | no |
 | <a name="input_external_vpc_id"></a> [external\_vpc\_id](#input\_external\_vpc\_id) | n/a | `string` | `null` | no |
+| <a name="input_key_path"></a> [key\_path](#input\_key\_path) | n/a | `string` | `null` | no |
 | <a name="input_proxy_config_path"></a> [proxy\_config\_path](#input\_proxy\_config\_path) | n/a | `string` | `"../config/proxy-config.yaml"` | no |
 | <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | n/a | `bool` | `false` | no |
 | <a name="input_task_image"></a> [task\_image](#input\_task\_image) | Image reference for nginx ECS task | `string` | `"amazonlinux"` | no |
@@ -100,6 +108,7 @@
 | <a name="input_task_scale_cpu_pct"></a> [task\_scale\_cpu\_pct](#input\_task\_scale\_cpu\_pct) | CPU usage percentage that will cause ECS to increase the task count. | `number` | `80` | no |
 | <a name="input_task_scale_max"></a> [task\_scale\_max](#input\_task\_scale\_max) | Maximum NGINX tasks | `number` | `4` | no |
 | <a name="input_task_scale_min"></a> [task\_scale\_min](#input\_task\_scale\_min) | Minimum NGINX tasks | `number` | `1` | no |
+| <a name="input_truststore_path"></a> [truststore\_path](#input\_truststore\_path) | n/a | `string` | `null` | no |
 | <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr) | n/a | `string` | `"10.0.0.0/16"` | no |
 
 ## Outputs

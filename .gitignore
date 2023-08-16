@@ -423,3 +423,5 @@ outputs/
 !cdk/.eslintrc.js
 cdk/**/*.js
 cdk/**/*.d.ts
+
+**/*.pem

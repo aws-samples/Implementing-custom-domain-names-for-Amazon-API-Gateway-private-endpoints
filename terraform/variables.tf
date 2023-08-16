@@ -36,8 +36,8 @@ variable "vpc_cidr" {
 }
 
 variable "external_vpc_id" {
-  type    = string
-  default = null
+  type     = string
+  default  = null
   nullable = true
   validation {
     condition     = can(regex("(vpc-[0-9a-f]+|)", var.external_vpc_id)) || var.external_vpc_id == null
@@ -114,8 +114,8 @@ variable "task_scale_cpu_pct" {
 }
 
 variable "external_endpoint_sg_id" {
-  type    = string
-  default = null
+  type     = string
+  default  = null
   nullable = true
   validation {
     condition     = can(regex("(sg-[0-9a-f]+|)", var.external_endpoint_sg_id)) || var.external_endpoint_sg_id == null
@@ -125,8 +125,8 @@ variable "external_endpoint_sg_id" {
 }
 
 variable "external_fargate_sg_id" {
-  type    = string
-  default = null
+  type     = string
+  default  = null
   nullable = true
   validation {
     condition     = can(regex("(sg-[0-9a-f]+|)", var.external_fargate_sg_id)) || var.external_fargate_sg_id == null
@@ -136,12 +136,30 @@ variable "external_fargate_sg_id" {
 }
 
 variable "external_alb_sg_id" {
-  type    = string
-  default = null
+  type     = string
+  default  = null
   nullable = true
   validation {
     condition     = can(regex("(sg-[0-9a-f]+|)", var.external_alb_sg_id)) || var.external_alb_sg_id == null
     error_message = "Invalid external security group id."
   }
 
+}
+
+variable "cert_path" {
+  type     = string
+  default  = null
+  nullable = true
+}
+
+variable "key_path" {
+  type     = string
+  default  = null
+  nullable = true
+}
+
+variable "truststore_path" {
+  type     = string
+  default  = null
+  nullable = true
 }

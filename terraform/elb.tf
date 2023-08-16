@@ -45,7 +45,7 @@ resource "aws_lb_listener_certificate" "load_balancer" {
 }
 
 resource "aws_security_group" "alb" {
-  count = var.elb_type == "ALB" && var.external_alb_sg_id == null ?  1 : 0
+  count = var.elb_type == "ALB" && var.external_alb_sg_id == null ? 1 : 0
 
   name   = "${local.name_prefix}_alb"
   vpc_id = data.aws_vpc.selected.id
