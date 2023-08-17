@@ -125,7 +125,20 @@ resource "aws_ecs_task_definition" "app" {
             }
             )
           )
+        },
+        {
+          name = "TRUSTSTORE",
+          value = var.truststore_path == null ? "null" : "${aws_s3_object.truststore[0].bucket}/${aws_s3_object.truststore[0].key}"
+        },
+        {
+          name = "CERT_PATH",
+          value = var.cert_path == null ? "null" : aws_ssm_parameter.certificate_pem[0].name
+        },
+        {
+          name = "KEY_PATH",
+          value = var.key_path == null ? "null" : aws_ssm_parameter.key_pem[0].name
         }
+
       ]
       portMappings = [
         {

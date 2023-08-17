@@ -25,7 +25,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "truststore" {
   }
 }
 
-resource "aws_s3_object" "object" {
+resource "aws_s3_object" "truststore" {
   count  = var.truststore_path == null ? 0 : 1
   bucket = aws_s3_bucket.truststore[0].id
   key    = "${local.name_prefix}/truststore.pem"
