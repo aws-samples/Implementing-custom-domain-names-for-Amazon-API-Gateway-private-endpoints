@@ -43,7 +43,7 @@
         "cdk-nag": "^2.27.80",
         "constructs": "^10.2.69",
         "extract-domain": "2.4.8",
-        "js-yaml": "4.1.0",
+        "js-yaml": "4.1.1",
         "npx": "^10.2.2",
         "parse-domain": "7.0.1",
         "prettier": "^3.0.0",
